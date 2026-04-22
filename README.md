@@ -16,6 +16,19 @@ transfers to quant research. The success metric is "did the loop run and
 produce an interpretable `results.tsv`", **not** "did we find a profitable
 strategy". Nothing in this repo is a recommendation to trade real capital.
 
+## A run in one picture
+
+![Sharpe frontier — v0.1.0 run](sharpe-frontier.png)
+
+One dot per backtest over 99 experiments on BTC/USDT + ETH/USDT @ 1h. Green
+dots were kept by the agent, gray were discarded. The red line is the
+running best of *kept only* — it plateaus at Sharpe 1.44, **not** at the
+Sharpe-18 cluster on the right. Those high-Sharpe runs are gray because the
+agent itself identified them as oracle-gaming (ROI-clipping that compressed
+return variance without improving real return) and retroactively discarded
+them. Full write-up in
+[`versions/0.1.0/retrospective.md`](versions/0.1.0/retrospective.md).
+
 ## How it works
 
 Four files that matter:
