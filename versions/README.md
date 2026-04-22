@@ -14,6 +14,22 @@ Versioning is loose — use semver spirit, not letter:
 - **Minor** (0.2, 0.3): new asset, new timerange, new program.md, or otherwise distinct research question
 - **Patch** (0.1.1, 0.1.2): minor reruns of the same setup (re-seed, small tweaks, reproducibility checks)
 
+## Rules
+
+**Archives are immutable.** Once a version folder is merged to master, do not
+modify files inside `versions/<version>/`. If something in a past archive is
+wrong or needs extension, write `versions/<version>/errata.md` or bump to a
+patch version. The history is load-bearing — the whole point of this folder
+is that we can read an archived retrospective a year from now and trust it
+reflects what we thought at the time.
+
+**Scaffold PRs and version-archive PRs are separate.** A PR that adds a new
+`versions/<version>/` folder should touch nothing outside `versions/` (+
+`.gitignore` if needed). A PR that changes `prepare.py`, `run.py`,
+`config.json`, `program.md`, etc. should not touch `versions/`. This keeps
+review surfaces distinct: scaffold PRs get real review, version PRs are
+rubber-stamp.
+
 ## Index
 
 | Version | Date | Asset | Experiments | Peak Sharpe | Headline |
