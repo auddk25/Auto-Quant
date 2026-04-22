@@ -84,7 +84,7 @@ Extract the key metrics from the log file:
 grep "^sharpe:\|^trade_count:\|^max_drawdown_pct:\|^total_profit_pct:" run.log
 ```
 
-For a richer read, `grep "^---" -A 11 run.log` dumps the whole block.
+For a richer read, `grep "^---" -A 12 run.log` dumps the whole block.
 
 ## Logging results
 
@@ -127,7 +127,7 @@ LOOP FOREVER:
 3. `git commit -am "<short description>"`
 4. Run the backtest: `uv run run.py > run.log 2>&1` (redirect everything — do
    NOT use tee or let output flood your context)
-5. Read the summary: `grep "^---" -A 11 run.log` (or grep specific fields)
+5. Read the summary: `grep "^---" -A 12 run.log` (or grep specific fields)
 6. If the summary is empty or malformed, the run crashed. Run `tail -n 50 run.log`
    to read the Python stack trace and attempt a fix. If you can't get it to work
    after more than a few attempts, give up and revert.
