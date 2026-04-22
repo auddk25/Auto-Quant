@@ -27,7 +27,7 @@ class AutoResearch(IStrategy):
     startup_candle_count: int = 200
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=21)
         dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
         dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
@@ -39,7 +39,7 @@ class AutoResearch(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
-            ((dataframe["close"] > dataframe["ema200"])) & ((dataframe["rsi"] < 32)) & ((dataframe["close"] < dataframe["bb_lower"])),
+            ((dataframe["close"] > dataframe["ema200"])) & ((dataframe["rsi"] < 40)) & ((dataframe["close"] < dataframe["bb_lower"])),
             "enter_long",
         ] = 1
         return dataframe
