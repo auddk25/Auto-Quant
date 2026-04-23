@@ -1,0 +1,65 @@
+"""
+<Name> — one-line summary (rename this file AND the class below; they must match)
+
+Paradigm: <mean-reversion | trend-following | volatility | breakout | other>
+Hypothesis: <what you believe about this asset that this strategy tests. Be specific —
+             "BTC/ETH 1h reverts from RSI extremes within ~10 days" beats "mean-reversion">
+Parent: <another strategy name, or "root" for hypotheses-from-scratch>
+Created: <git commit hash where first introduced — fill in after first commit>
+Status: active
+
+This file is a skeleton reference. To create a new strategy:
+  1. Copy this file to `user_data/strategies/<YourName>.py`
+  2. Rename the class to `<YourName>` (must match filename)
+  3. Fill in the docstring fields above
+  4. Implement populate_indicators / populate_entry_trend / populate_exit_trend
+  5. Remove this block of instructional text
+
+File names starting with `_` are ignored by run.py — that's how this
+template stays excluded from backtests.
+"""
+
+from pandas import DataFrame
+import talib.abstract as ta  # noqa: F401  — available if you want it
+
+from freqtrade.strategy import IStrategy
+
+
+class _Template(IStrategy):
+    INTERFACE_VERSION = 3
+
+    # ---- attributes every strategy must declare ----
+    timeframe = "1h"
+    can_short = False
+
+    # The safest neutral baseline: no ROI take-profit cap, no stop-loss.
+    # Override if the strategy needs them. Be aware that `exit_profit_only = True`
+    # in a bull regime can give artificially-clean 100% win rates (v0.1.0 lesson).
+    minimal_roi = {"0": 100}
+    stoploss = -0.99
+
+    trailing_stop = False
+    process_only_new_candles = True
+
+    use_exit_signal = True
+    exit_profit_only = False
+    ignore_roi_if_entry_signal = False
+
+    # Bump this up if your indicators need a longer history to warm up.
+    startup_candle_count: int = 30
+
+    # ---- three methods every strategy must implement ----
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        # Example:
+        # dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        # Example:
+        # dataframe.loc[dataframe["rsi"] < 20, "enter_long"] = 1
+        return dataframe
+
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        # Example:
+        # dataframe.loc[dataframe["rsi"] > 75, "exit_long"] = 1
+        return dataframe
