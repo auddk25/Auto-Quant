@@ -55,7 +55,7 @@ class HybridMeanRev(IStrategy):
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["close"] < dataframe["ema20"]
-        condition &= dataframe["adx"] > 19
+        condition &= dataframe["adx"] > 25
         condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
         # Dual gate
         condition &= dataframe["stoch_k"] < 0.25
