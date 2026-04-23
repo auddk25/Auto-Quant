@@ -28,7 +28,7 @@ class FastRSIRev(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 0.008}
-    stoploss = -0.06
+    stoploss = -0.04
 
     trailing_stop = False
     process_only_new_candles = True
@@ -52,7 +52,7 @@ class FastRSIRev(IStrategy):
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"]
-        condition &= dataframe["rsi_fast"] < 15
+        condition &= dataframe["rsi_fast"] < 20
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
