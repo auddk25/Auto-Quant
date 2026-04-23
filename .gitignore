@@ -6,6 +6,9 @@ results.tsv
 # run logs — every experiment writes run.log, never commit
 run.log
 *.log
+# but DO track frozen run-log snapshots under versions/
+!versions/**/run.log
+!versions/**/*.log
 
 # FreqTrade-generated output
 user_data/data/
