@@ -55,6 +55,6 @@ class AutoResearch(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_condition = ((dataframe["rsi"] > 60) & (dataframe["close"] > dataframe["bb_middle"] * 1.0))
+        exit_condition = ((dataframe["rsi"] > 58) & (dataframe["close"] > dataframe["bb_middle"] * 1.0))
         dataframe.loc[exit_condition, "exit_long"] = 1
         return dataframe
