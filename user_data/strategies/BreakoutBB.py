@@ -46,13 +46,15 @@ class BreakoutBB(IStrategy):
             (dataframe["bb_upper"] - dataframe["bb_lower"]) / dataframe["bb_middle"]
         )
         dataframe["bb_width_prev"] = dataframe["bb_width"].shift(1)
+        dataframe["volume_ma"] = ta.SMA(dataframe["volume"], timeperiod=20)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        squeeze = dataframe["bb_width_prev"] < 0.06
+        squeeze = dataframe["bb_width_prev"] < 0.03
         breakout = dataframe["close"] > dataframe["bb_upper"]
         momentum = dataframe["rsi"] > 55
-        dataframe.loc[squeeze & breakout & momentum, "enter_long"] = 1
+        vol_confirm = dataframe["volume"] > dataframe["volume_ma"] * 1.5
+        dataframe.loc[squeeze & breakout & momentum & vol_confirm, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:

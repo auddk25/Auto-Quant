@@ -47,7 +47,9 @@ class TrendMACD(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = dataframe["close"] > dataframe["ema200"]
-        condition &= dataframe["adx"] > 20
+        condition &= dataframe["adx"] > 25
+        condition &= dataframe["rsi"] > 50
+        condition &= dataframe["macd"] > 0
         condition &= dataframe["macd"] > dataframe["macdsignal"]
         condition &= dataframe["macd"].shift(1) <= dataframe["macdsignal"].shift(1)
         dataframe.loc[condition, "enter_long"] = 1
