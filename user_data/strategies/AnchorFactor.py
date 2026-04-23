@@ -61,7 +61,7 @@ class AnchorFactor(IStrategy):
             24 * 7
         ).sum()
 
-        dataframe["ema200"] = ta.SMA(dataframe, timeperiod=200)
+        dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
         dataframe["bb_upper"] = bands["upperband"]
