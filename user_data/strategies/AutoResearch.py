@@ -14,7 +14,7 @@ class AutoResearch(IStrategy):
     timeframe = "1h"
     can_short = False
 
-    minimal_roi = {"0": 0.008}
+    minimal_roi = {"0": 0.007}
     stoploss = -0.08
 
     trailing_stop = False
@@ -42,7 +42,7 @@ class AutoResearch(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = (dataframe["close"] > dataframe["ema200"])
-        condition &= dataframe["rsi"] < 40
+        condition &= dataframe["rsi"] < 39
         condition &= (dataframe["close"] < dataframe["bb_lower"] * 0.997)
 
         dataframe.loc[condition, "enter_long"] = 1
