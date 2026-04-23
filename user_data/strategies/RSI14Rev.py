@@ -42,7 +42,7 @@ class RSI14Rev(IStrategy):
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
-        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.0, nbdevdn=2.0)
+        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
         dataframe["bb_lower"] = bands["lowerband"]
         dataframe["bb_middle"] = bands["middleband"]
         return dataframe
@@ -51,7 +51,7 @@ class RSI14Rev(IStrategy):
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"]
-        condition &= dataframe["rsi"] < 35
+        condition &= dataframe["rsi"] < 30
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
