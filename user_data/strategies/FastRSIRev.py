@@ -43,7 +43,7 @@ class FastRSIRev(IStrategy):
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         dataframe["rsi_fast"] = ta.RSI(dataframe, timeperiod=7)
         dataframe["rsi_slow"] = ta.RSI(dataframe, timeperiod=20)
-        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.5, nbdevdn=2.5)
+        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
         dataframe["bb_lower"] = bands["lowerband"]
         dataframe["bb_middle"] = bands["middleband"]
         return dataframe
