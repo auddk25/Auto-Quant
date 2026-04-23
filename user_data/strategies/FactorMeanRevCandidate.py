@@ -112,6 +112,11 @@ class FactorMeanRevCandidate(IStrategy):
             condition = base_condition & (
                 stoch_stable < self.stable_stoch_entry_threshold
             )
+            stablecoin_growth_7d = dataframe.get(
+                "stablecoin_mcap_growth_7d", dataframe["stablecoin_mcap_growth"]
+            )
+            condition &= stablecoin_growth_7d.notna()
+            condition &= stablecoin_growth_7d > 0.0
 
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
