@@ -52,7 +52,7 @@ class FastRSIRev(IStrategy):
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"]
-        condition &= dataframe["rsi_fast"] < 18
+        condition &= dataframe["rsi_fast"] < 20
         condition &= dataframe["rsi_slow"] > 30
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe

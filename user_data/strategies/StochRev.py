@@ -54,7 +54,7 @@ class StochRev(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = dataframe["close"] > dataframe["ema200"]
-        condition &= dataframe["adx"] > 15
+        condition &= dataframe["adx"] > 20
         condition &= dataframe["close"] < dataframe["bb_lower"]
         condition &= dataframe["stoch_k"] < 0.15
         condition &= dataframe["stoch_k"] > dataframe["stoch_d"]
