@@ -52,6 +52,8 @@ class RSI14Rev(IStrategy):
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"]
         condition &= dataframe["rsi"] < 30
+        # RSI is turning up — start of recovery, not still falling
+        condition &= dataframe["rsi"] > dataframe["rsi"].shift(1)
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
