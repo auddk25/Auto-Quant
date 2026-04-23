@@ -56,10 +56,10 @@ class BreakoutBB(IStrategy):
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # sustained squeeze (5+ bars), then breakout above upper band
         condition = dataframe["close"] > dataframe["ema200"]
-        condition &= dataframe["squeeze_bars"].shift(1) >= 5
+        condition &= dataframe["squeeze_bars"].shift(1) >= 8
         condition &= dataframe["close"] > dataframe["bb_upper"]
         condition &= dataframe["rsi"] > 52
-        condition &= dataframe["volume"] > dataframe["volume_ma"] * 1.5
+        condition &= dataframe["volume"] > dataframe["volume_ma"] * 2.0
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
