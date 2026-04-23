@@ -355,3 +355,30 @@ Rules:
 - FactorMeanRevCandidate: main Sharpe 0.9628, 2022 Sharpe 0.5867
 - StochMeanRev: main Sharpe 0.6785, 2022 Sharpe 0.6318
 - Verified: 31 passed, `uv run run.py` -> 3 succeeded 0 failed.
+
+
+--
+
+--- Session: 2026-04-24 00:00 ---
+## Completed
+- Ran R103-R114 (12 experiments), all reverted. No parameter improvement found.
+- R103: EMA50 filter structurally incompatible with BB_lower entry
+- R104-R114: tested BB deviation, ROI, exit thresholds, MFI gate, stablecoin gate, tiered ROI, pair-adaptive exit, RSI entry swap, BB multiplier
+- Confirmed both AnchorFactor (20 rounds) and FactorMeanRevCandidate (24 rounds) at parameter ceiling
+- Key insight: mean-reversion 28% return vs buy-and-hold 427% over 3 years; need trend-following paradigm
+## Pending
+- Kill AnchorFactor or FactorMeanRevCandidate, replace with trend-following strategy
+- Run 2026 validation set (prepare_val.py + val.py) for out-of-sample test
+- Explore multi-timeframe (4h trend + 1h entry) or momentum paradigm
+- Consider leverage-aware evaluation for low-DD strategies
+- Update claude-progress.txt roster section (still shows old StochMeanRev/HybridMeanRev)
+## Known Issues
+- claude-progress.txt top section is stale (shows session 6 roster, not current R114 state)
+- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
+- CRLF/LF mismatch on Windows causes full-file diffs when editing AnchorFactor.py
+---
+
+## Current roster (end of R114, 2026-04-24)
+- MeanRevADX (ANCHOR): main 2.1016, stress -0.3836, dual 1.1076
+- AnchorFactor: main 1.7825, stress -0.2445, dual 0.9717
+- FactorMeanRevCandidate: main 1.0815, stress 0.5122, dual 0.8538
