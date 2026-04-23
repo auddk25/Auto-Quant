@@ -24,8 +24,8 @@ class StochRev(IStrategy):
     timeframe = "1h"
     can_short = False
 
-    minimal_roi = {"0": 0.008}
-    stoploss = -0.08
+    minimal_roi = {"0": 0.010}
+    stoploss = -0.06
 
     trailing_stop = False
     process_only_new_candles = True
