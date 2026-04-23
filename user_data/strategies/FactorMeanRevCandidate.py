@@ -82,6 +82,7 @@ class FactorMeanRevCandidate(IStrategy):
         ).sum()
 
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
+        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
         dataframe["bb_middle"] = bands["middleband"]
@@ -91,6 +92,7 @@ class FactorMeanRevCandidate(IStrategy):
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         base_condition = dataframe["close"] > dataframe["ema200"]
         base_condition &= dataframe["adx"] > 19
+        base_condition &= dataframe["close"] > dataframe["ema50"]
         base_condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
 
         if self._uses_factor_gate(metadata):
