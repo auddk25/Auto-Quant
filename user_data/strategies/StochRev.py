@@ -47,7 +47,14 @@ class StochRev(IStrategy):
         )
         dataframe["stoch_k"] = stoch["slowk"] / 100.0
         dataframe["stoch_d"] = stoch["slowd"] / 100.0
-        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.0, nbdevdn=2.0)
+        
+        # Per-pair customization
+        pair = metadata.get("pair", "")
+        if "BTC" in pair:
+            bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.0, nbdevdn=2.0)
+        else:
+            bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
+            
         dataframe["bb_lower"] = bands["lowerband"]
         dataframe["bb_middle"] = bands["middleband"]
         return dataframe
@@ -55,7 +62,6 @@ class StochRev(IStrategy):
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 15
-        condition &= dataframe["adx"] < dataframe["adx"].shift(1)
         condition &= dataframe["close"] < dataframe["bb_lower"]
         condition &= dataframe["stoch_k"] < 0.15
         condition &= dataframe["stoch_k"] > dataframe["stoch_d"]
