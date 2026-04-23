@@ -13,7 +13,7 @@ Status: active
 from pandas import DataFrame
 import talib.abstract as ta
 
-from freqtrade.strategy import IStrategy
+from freqtrade.strategy import IStrategy, DecimalParameter
 
 
 class HybridMeanRev(IStrategy):
@@ -22,7 +22,7 @@ class HybridMeanRev(IStrategy):
     timeframe = "1h"
     can_short = False
 
-    minimal_roi = {"0": 0.010}
+    minimal_roi = {"0": 0.010} # Baseline
     stoploss = -0.08
 
     trailing_stop = False
@@ -62,7 +62,20 @@ class HybridMeanRev(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Exit when stoch_k > 0.80 or price reclaims the BB midline
+        # Per-pair custom exit target
+        pair = metadata.get("pair", "")
+        # Exit if target hit (approximate ROI for backtest)
+        # In live this would use custom_exit, for backtest we use the indicator.
+        if "ETH" in pair:
+            target = 0.012
+        else:
+            target = 0.010
+            
+        # This is a bit tricky to do in populate_exit_trend without entry_price
+        # I will revert to standard minimal_roi and just use custom_exit if needed.
+        # But wait, run.py might not support complex custom_exit as well as basic.
+        
+        # Let's stick to standard exit signals for now.
         exit_cond = (dataframe["stoch_k"] > 0.80) | (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
