@@ -45,8 +45,7 @@ class StochMeanRev(IStrategy):
         )
         dataframe["stoch_k"] = stoch["slowk"] / 100.0
         dataframe["stoch_d"] = stoch["slowd"] / 100.0
-        dataframe["mfi"] = ta.MFI(dataframe, timeperiod=14)
-
+        
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
@@ -60,7 +59,6 @@ class StochMeanRev(IStrategy):
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
         condition &= dataframe["stoch_k"] < self.stoch_entry_threshold
-        condition &= dataframe["mfi"] < 30
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
