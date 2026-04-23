@@ -73,7 +73,7 @@ class AnchorFactor(IStrategy):
         base_condition = dataframe["close"] > dataframe["ema200"]
         base_condition &= dataframe["adx"] > 19
         base_condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
-        base_condition &= dataframe["rsi"] < 40
+        base_condition &= dataframe["rsi"] < 35
 
         if self._uses_factor_gate(metadata):
             condition = base_condition.copy()
