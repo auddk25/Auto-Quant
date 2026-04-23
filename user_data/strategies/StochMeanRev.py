@@ -34,7 +34,6 @@ class StochMeanRev(IStrategy):
     ignore_roi_if_entry_signal = True
 
     startup_candle_count: int = 200
-    stoch_entry_threshold = 0.22
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # Standard RSI(20) based StochRSI
@@ -58,7 +57,7 @@ class StochMeanRev(IStrategy):
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
-        condition &= dataframe["stoch_k"] < self.stoch_entry_threshold
+        condition &= dataframe["stoch_k"] < 0.20
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
