@@ -45,6 +45,7 @@ class HybridMeanRev(IStrategy):
         
         dataframe["mfi"] = ta.MFI(dataframe, timeperiod=14)
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
+        dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
         dataframe["bb_middle"] = bands["middleband"]
@@ -53,6 +54,7 @@ class HybridMeanRev(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = dataframe["close"] > dataframe["ema200"]
+        condition &= dataframe["close"] < dataframe["ema20"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
         # Dual gate
