@@ -91,7 +91,7 @@ class FactorMeanRevCandidate(IStrategy):
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         base_condition = dataframe["close"] > dataframe["ema200"]
         base_condition &= dataframe["adx"] > 19
-        base_condition &= dataframe["close"] < dataframe["bb_lower"] * 0.998
+        base_condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
 
         if self._uses_factor_gate(metadata):
             stoch_factor = dataframe.get("stoch_factor_k", dataframe["stoch_k"])
