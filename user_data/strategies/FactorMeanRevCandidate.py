@@ -44,7 +44,7 @@ class FactorMeanRevCandidate(IStrategy):
     enriched_root: Path | None = None
     max_funding_rate = 0.001
     min_stablecoin_mcap_growth = 0.0
-    stoch_rsi_period = 25
+    stoch_rsi_period = 30
     stable_stoch_rsi_period = 20
     stable_stoch_entry_threshold = 0.22
 
