@@ -100,8 +100,6 @@ class FactorMeanRevCandidate(IStrategy):
             # Require positive stablecoin liquidity impulse and avoid extreme funding.
             condition &= dataframe["funding_rate"].notna()
             condition &= dataframe["funding_rate"] < self.max_funding_rate
-            condition &= dataframe["stablecoin_mcap_growth"].notna()
-            condition &= dataframe["stablecoin_mcap_growth"] > self.min_stablecoin_mcap_growth
             stablecoin_growth_7d = dataframe.get(
                 "stablecoin_mcap_growth_7d", dataframe["stablecoin_mcap_growth"]
             )
