@@ -36,8 +36,8 @@ class StochMeanRev(IStrategy):
     startup_candle_count: int = 200
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Standard RSI(14) based StochRSI
-        rsi = ta.RSI(dataframe, timeperiod=14)
+        # Standard RSI(20) based StochRSI
+        rsi = ta.RSI(dataframe, timeperiod=20)
         stoch = ta.STOCH(
             dataframe.assign(high=rsi, low=rsi, close=rsi),
             fastk_period=14, slowk_period=3, slowd_period=3,
