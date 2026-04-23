@@ -57,11 +57,6 @@ class AnchorFactor(IStrategy):
         )
 
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=20)
-        stoch_rsi = ta.STOCH(
-            dataframe.assign(high=dataframe["rsi"], low=dataframe["rsi"], close=dataframe["rsi"]),
-            fastk_period=20, slowk_period=3, slowd_period=3,
-        )
-        dataframe["stoch_k"] = stoch_rsi["slowk"] / 100.0
         dataframe["stablecoin_mcap_growth_7d"] = dataframe["stablecoin_mcap_growth"].rolling(
             24 * 7
         ).sum()
@@ -97,7 +92,7 @@ class AnchorFactor(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["rsi"] > 58) & (dataframe["stoch_k"] > 0.60)
+        exit_cond = (dataframe["rsi"] > 58) & (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
 
