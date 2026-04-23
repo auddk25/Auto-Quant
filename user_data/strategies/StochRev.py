@@ -59,7 +59,6 @@ class StochRev(IStrategy):
         condition &= dataframe["stoch_k"] < 0.15
         condition &= dataframe["stoch_k"] > dataframe["stoch_d"]
         condition &= dataframe["stoch_k"].shift(1) <= dataframe["stoch_d"].shift(1)
-        condition &= dataframe["rsi"] < 45
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
