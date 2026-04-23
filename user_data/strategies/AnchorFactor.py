@@ -67,8 +67,6 @@ class AnchorFactor(IStrategy):
         dataframe["bb_upper"] = bands["upperband"]
         dataframe["bb_middle"] = bands["middleband"]
         dataframe["bb_lower"] = bands["lowerband"]
-        dataframe["atr"] = ta.ATR(dataframe, timeperiod=14)
-        dataframe["atr_mean"] = dataframe["atr"].rolling(100).mean()
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -76,7 +74,6 @@ class AnchorFactor(IStrategy):
         base_condition &= dataframe["adx"] > 19
         base_condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
         base_condition &= dataframe["rsi"] < 40
-        base_condition &= dataframe["atr"] < dataframe["atr_mean"] * 2.0
 
         if self._uses_factor_gate(metadata):
             condition = base_condition.copy()
