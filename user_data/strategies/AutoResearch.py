@@ -48,7 +48,7 @@ class AutoResearch(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = (dataframe["close"] > dataframe["ema200"])
-        condition &= dataframe["rsi"] < 39
+        condition &= dataframe["rsi"] < 40
         condition &= (dataframe["close"] < dataframe["bb_lower"] * 0.997)
         condition &= dataframe["adx"] > 20
         dataframe.loc[condition, "enter_long"] = 1
