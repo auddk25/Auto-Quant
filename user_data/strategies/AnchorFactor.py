@@ -31,7 +31,6 @@ class AnchorFactor(IStrategy):
 
     minimal_roi = {"0": 0.008}
     stoploss = -0.08
-    use_custom_stoploss = True
 
     trailing_stop = False
     process_only_new_candles = True
@@ -92,11 +91,6 @@ class AnchorFactor(IStrategy):
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
-
-    def custom_stoploss(self, pair: str, trade, current_time, current_rate, current_profit, **kwargs) -> float:
-        if 'ETH' in pair:
-            return -0.04
-        return -0.08
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         exit_cond = (dataframe["rsi"] > 58) & (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
