@@ -47,7 +47,7 @@ class MFIMeanRev(IStrategy):
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
-        condition &= dataframe["mfi"] < 25
+        condition &= dataframe["mfi"] < 30
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
