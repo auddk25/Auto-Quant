@@ -1,5 +1,6 @@
 # results journal — untracked by design so experience survives `git reset`
 results.tsv
+results_*.tsv
 # but DO track frozen snapshots under versions/
 !versions/**/results.tsv
 
@@ -12,6 +13,8 @@ run.log
 
 # FreqTrade-generated output
 user_data/data/
+user_data/data_stress/
+user_data/data_val/
 user_data/backtest_results/
 user_data/logs/
 user_data/hyperopt_results/
@@ -22,6 +25,8 @@ __pycache__/
 *.pyc
 .venv/
 .python-version.lock
+.tmp/
+.uv-cache/
 
 # Editor / OS
 .DS_Store

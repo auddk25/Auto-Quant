@@ -18,8 +18,14 @@ To set up a new experiment, work with the user to:
 3. **Read the in-scope files**. The repo is small. Read these files for full context:
    - `README.md` — repository context
    - `config.json` — fixed FreqTrade config (pairs, timeframe, fees). Do not modify.
-   - `prepare.py` — data download. Do not modify.
+   - `prepare.py` — v0.3.0 data preparation entrypoint. It may be modified when
+     the work is specifically about the data pipeline. Important: canonical
+     FreqTrade `.feather` inputs must stay 6-column OHLCV; enriched data lives
+     in sidecar files under `user_data/data/_cache/enriched/`.
    - `run.py` — the batch backtest oracle. Do not modify.
+   - `stress.py` — optional 2022 bear-market pressure-test oracle. It must use
+     `user_data/data_stress`, not the main `user_data/data`, so stress-history
+     warmup candles do not change the main leaderboard.
    - `user_data/strategies/_template.py.example` — skeleton for new strategies.
      **Note:** the folder may also contain `__pycache__`; ignore it.
    - `versions/0.1.0/retrospective.md` — optional but valuable context on
@@ -62,11 +68,12 @@ Each round runs a backtest on ALL active strategies on a **fixed timerange**
 
 ### What you CANNOT do
 
-- Modify `prepare.py`, `run.py`, or `config.json`. These are the evaluation
-  contract.
+- Modify `run.py` or `config.json`. These remain the evaluation contract.
+- Modify `prepare.py` unless the task is explicitly a data-pipeline / dataset
+  contract change for v0.3.0 or later.
 - `uv add` new dependencies. Use what's already in `pyproject.toml`.
 - Call the `freqtrade` CLI directly. The only way to run backtests is via
-  `uv run run.py`.
+  `uv run run.py`. For the optional 2022 stress test, use `uv run stress.py`.
 - Modify the timerange, pair list, or `_template.py.example`.
 - Have more than 3 active strategies at any time (see hard cap below).
 
@@ -147,6 +154,16 @@ Full per-strategy block:
 ```bash
 awk '/^---$/,/^$/' run.log
 ```
+
+Optional 2022 bear-market pressure test:
+```bash
+uv run stress.py > stress.log 2>&1
+grep "^---\|^strategy:\|^sharpe:\|^total_profit_pct:\|^max_drawdown_pct:\|^trade_count:" stress.log
+```
+
+Use stress results as robustness evidence, not as the main leaderboard. If a
+strategy is strong in `run.py` but weak in `stress.py`, log that explicitly
+instead of silently promoting it as universally robust.
 
 ## Logging results
 

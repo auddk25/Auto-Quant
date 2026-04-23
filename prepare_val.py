@@ -1,13 +1,13 @@
 """
-prepare.py
+prepare_val.py
 
-v0.3.0 data preparation entrypoint: download BTC/USDT and ETH/USDT 1h OHLCV,
-keep the canonical FreqTrade feather inputs at 6 OHLCV columns, build enriched
-sidecar datasets with external factors, and mirror the canonical inputs to the
-top-level data directory Freqtrade already expects.
+Download BTC/USDT and ETH/USDT 1h OHLCV for the 2026 out-of-sample validation
+window, then build enriched factor sidecar files in user_data/data_val/.
+
+Run this once before the first `uv run val.py`. Re-running is safe (idempotent).
 
 Usage:
-    uv run prepare.py
+    uv run prepare_val.py
 """
 
 from __future__ import annotations
@@ -15,15 +15,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# Env check — talib is hard to install on macOS ARM; give clear remediation.
-# ---------------------------------------------------------------------------
 try:
     import talib  # noqa: F401
 except ImportError:
     print(
-        "ERROR: TA-Lib is not installed.\n\n"
-        "Two install paths (see README.md for full detail):\n"
+        "ERROR: TA-Lib is not installed.\n"
+        "Two install paths (see README.md):\n"
         "  1. Native: `brew install ta-lib` then `uv sync`\n"
         "  2. Docker fallback: `docker compose run --rm freqtrade ...`\n",
         file=sys.stderr,
@@ -34,9 +31,6 @@ from freqtrade.commands.data_commands import start_download_data  # noqa: E402
 
 from autoq_data import prepare_enriched_datasets  # noqa: E402
 
-# ---------------------------------------------------------------------------
-# Fixed constants — these define the evaluation arena.
-# ---------------------------------------------------------------------------
 PROJECT_DIR = Path(__file__).parent.resolve()
 USER_DATA = PROJECT_DIR / "user_data"
 CONFIG = PROJECT_DIR / "config.json"
@@ -44,11 +38,12 @@ CONFIG = PROJECT_DIR / "config.json"
 EXCHANGE = "binance"
 PAIRS = ["BTC/USDT", "ETH/USDT"]
 TIMEFRAMES = ["1h"]
-TIMERANGE = "20230101-20251231"
+TIMERANGE = "20260101-20260420"
+VAL_DATA_DIR = USER_DATA / "data_val"
 
 
 def data_exists() -> bool:
-    data_dir = USER_DATA / "data" / EXCHANGE
+    data_dir = VAL_DATA_DIR / EXCHANGE
     for pair in PAIRS:
         filename = f"{pair.replace('/', '_')}-1h.feather"
         if not (data_dir / filename).exists():
@@ -60,7 +55,7 @@ def download() -> None:
     args = {
         "config": [str(CONFIG)],
         "user_data_dir": str(USER_DATA),
-        "datadir": str(USER_DATA / "data"),
+        "datadir": str(VAL_DATA_DIR),
         "exchange": EXCHANGE,
         "pairs": PAIRS,
         "timeframes": TIMEFRAMES,
@@ -82,7 +77,7 @@ def main() -> None:
     print(f"Pairs:      {PAIRS}")
     print(f"Timeframes: {TIMEFRAMES}")
     print(f"Timerange:  {TIMERANGE}")
-    print(f"Dest:       {USER_DATA / 'data' / EXCHANGE}")
+    print(f"Dest:       {VAL_DATA_DIR / EXCHANGE}")
     print()
 
     if data_exists():
@@ -93,13 +88,13 @@ def main() -> None:
     if not data_exists():
         print(
             "ERROR: download appeared to succeed but expected files are missing.\n"
-            f"Check {USER_DATA / 'data' / EXCHANGE}/",
+            f"Check {VAL_DATA_DIR / EXCHANGE}/",
             file=sys.stderr,
         )
         sys.exit(1)
 
     prepare_enriched_datasets(
-        data_dir=USER_DATA / "data",
+        data_dir=VAL_DATA_DIR,
         exchange=EXCHANGE,
         pairs=PAIRS,
         download_ohlcv=None,

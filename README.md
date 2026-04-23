@@ -35,12 +35,20 @@ Four things that matter:
 
 - **`config.json`** — FreqTrade config, fixed. Pairs, timeframe, fees, dry-run
   wallet, timerange. The agent does not touch this.
-- **`prepare.py`** — one-time data download from Binance via FreqTrade's Python
-  API. The agent does not touch this.
+- **`prepare.py`** — v0.3.0 data preparation entrypoint. It still downloads
+  Binance OHLCV via FreqTrade's Python API, keeps the canonical FreqTrade input
+  files at 6 OHLCV columns, and writes enriched sidecar datasets plus a cache
+  manifest under `user_data/data/_cache/`.
+- **`autoq_data/strategy_bridge.py`** — helper for strategies that want to
+  merge v0.3.0 sidecar factors into their in-memory dataframe without touching
+  the canonical OHLCV inputs.
 - **`run.py`** — in-process **batch backtest**. Discovers every `.py` under
   `user_data/strategies/` (skipping files prefixed `_`), runs FreqTrade's
   `Backtesting` for each, and prints one `---` summary block per strategy.
   The agent does not touch this.
+- **`stress.py`** — optional 2022 bear-market pressure test. It runs the same
+  active strategy roster as `run.py`, but uses `user_data/data_stress` so the
+  main leaderboard data remains isolated.
 - **`user_data/strategies/`** — **the directory the agent owns**. Each `.py`
   is one strategy; up to 3 active at a time. Agent creates / evolves / forks
   / kills strategies here. `_template.py.example` is the skeleton reference.
@@ -82,7 +90,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 3. Install Python deps
 uv sync
 
-# 4. One-time data download (~a few minutes)
+# 4. One-time data preparation (~a few minutes on warm cache, longer on first run)
 uv run prepare.py
 
 # 5. Sanity check — with no strategies yet, run.py should report
@@ -94,6 +102,16 @@ uv run run.py > run.log 2>&1; echo "exit=$?"
 If step 5 prints `no strategies found...` and `exit=2`, you're ready. (An
 actual backtest run only starts once the agent has created at least one
 strategy file.)
+
+Optional pressure test once `user_data/data_stress` has been prepared:
+
+```bash
+uv run stress.py > stress.log 2>&1
+```
+
+Keep `user_data/data` scoped to the main 2023+ evaluation data. Older 2022
+history belongs in `user_data/data_stress`; otherwise FreqTrade may use those
+earlier candles as indicator warmup and slightly change the main leaderboard.
 
 ## Running the agent
 
@@ -135,8 +153,9 @@ Auto-Quant/
 ├── pyproject.toml                     # uv-managed deps
 ├── .python-version                    # 3.11
 ├── config.json                        # FreqTrade config (read-only for agent)
-├── prepare.py                         # data download (read-only for agent)
+├── prepare.py                         # v0.3.0 data prep + factor enrichment
 ├── run.py                             # backtest + summary (read-only for agent)
+├── stress.py                          # optional 2022 bear-market pressure test
 ├── program.md                         # agent instructions
 ├── analysis.ipynb                     # post-hoc analysis
 ├── user_data/
@@ -144,6 +163,7 @@ Auto-Quant/
 │   │   ├── _template.py.example       # skeleton the agent copies from
 │   │   └── <agent-created files>.py   # up to 3 active at a time
 │   ├── data/                          # gitignored — downloaded OHLCV
+│   ├── data_stress/                   # gitignored — optional 2022 stress data
 │   └── backtest_results/              # gitignored — FreqTrade outputs
 ├── versions/                          # frozen snapshots of past runs
 └── results.tsv                        # gitignored — agent's event log
@@ -155,9 +175,11 @@ Auto-Quant/
   workspace; everything else is evaluation contract. Up to 3 strategies
   simultaneously, hard cap. Multi-strategy exists specifically to fight
   the single-paradigm anchoring that v0.1.0 exhibited.
-- **No CLI indirection.** The agent only runs `uv run prepare.py` and
-  `uv run run.py`. `run.py` uses FreqTrade's `Backtesting` class in-process,
-  so startup is fast and errors surface as real Python stack traces.
+- **No CLI indirection.** The operator still runs `uv run prepare.py` and
+  `uv run run.py`. In v0.3.0, `prepare.py` keeps FreqTrade's canonical OHLCV
+  inputs unchanged and writes enriched sidecar factor files while `run.py`
+  still uses FreqTrade's `Backtesting` class in-process, so startup stays fast
+  and errors surface as real Python stack traces.
 - **`results.tsv` is a gitignored event log.** Each round, the agent appends
   rows (one per strategy touched, with event type: create/evolve/stable/fork/kill).
   It survives `git reset --hard` so past lessons stay available even when

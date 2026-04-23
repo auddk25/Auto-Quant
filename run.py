@@ -16,12 +16,15 @@ Usage:
 
 from __future__ import annotations
 
+import math
 import subprocess
 import sys
 import traceback
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+import pandas as pd
 from freqtrade.configuration import Configuration
 from freqtrade.enums import RunMode
 from freqtrade.optimize.backtesting import Backtesting
@@ -126,6 +129,91 @@ def print_summary(strategy_name: str, commit: str, metrics: dict[str, float]) ->
     print(f"pairs:            {PAIRS_STR}")
 
 
+def compute_bah_benchmark(
+    data_dir: Path, exchange: str, timerange: str
+) -> dict[str, dict[str, float]]:
+    """Buy-and-hold stats from the OHLCV feather files for the given timerange.
+
+    Sharpe is computed from daily log-returns annualised with sqrt(365).
+    This is the standard time-series Sharpe, NOT the trade-based Sharpe that
+    Freqtrade reports for strategies — the two are not directly comparable, but
+    both give a useful sense of risk-adjusted return.
+    """
+    parts = timerange.split("-")
+    ts = pd.Timestamp(parts[0], tz="UTC")
+    te = pd.Timestamp(parts[1], tz="UTC") + pd.Timedelta(hours=23)
+
+    results: dict[str, dict[str, float]] = {}
+    all_log_returns: list[pd.Series] = []
+
+    for pair in ["BTC/USDT", "ETH/USDT"]:
+        path = data_dir / exchange / f"{pair.replace('/', '_')}-1h.feather"
+        if not path.exists():
+            return {}
+        df = pd.read_feather(path).sort_values("date")
+        df = df[(df["date"] >= ts) & (df["date"] <= te)]
+        if len(df) < 2:
+            return {}
+
+        daily = df.set_index("date")["close"].resample("1D").last().dropna()
+        log_ret = np.log(daily / daily.shift(1)).dropna()
+
+        total_return = (daily.iloc[-1] / daily.iloc[0] - 1) * 100
+        sharpe = (
+            log_ret.mean() / log_ret.std() * math.sqrt(365)
+            if log_ret.std() > 0 else 0.0
+        )
+        max_dd = ((daily - daily.cummax()) / daily.cummax()).min() * 100
+
+        results[pair] = {
+            "total_return_pct": total_return,
+            "sharpe_approx": sharpe,
+            "max_drawdown_pct": max_dd,
+        }
+        all_log_returns.append(log_ret)
+
+    if len(all_log_returns) == 2:
+        combined = pd.concat(all_log_returns, axis=1).mean(axis=1)
+        avg_return = sum(v["total_return_pct"] for v in results.values()) / 2
+        port_sharpe = (
+            combined.mean() / combined.std() * math.sqrt(365)
+            if combined.std() > 0 else 0.0
+        )
+        pair_dfs = []
+        for pair in ["BTC/USDT", "ETH/USDT"]:
+            path = data_dir / exchange / f"{pair.replace('/', '_')}-1h.feather"
+            df = pd.read_feather(path).sort_values("date")
+            df = df[(df["date"] >= ts) & (df["date"] <= te)]
+            daily = df.set_index("date")["close"].resample("1D").last().dropna()
+            pair_dfs.append(daily / daily.iloc[0])
+        port_equity = pd.concat(pair_dfs, axis=1).mean(axis=1)
+        port_dd = ((port_equity - port_equity.cummax()) / port_equity.cummax()).min() * 100
+        results["50%BTC+50%ETH"] = {
+            "total_return_pct": avg_return,
+            "sharpe_approx": port_sharpe,
+            "max_drawdown_pct": port_dd,
+        }
+
+    return results
+
+
+def print_bah_benchmark(bah: dict[str, dict[str, float]]) -> None:
+    if not bah:
+        return
+    print("---")
+    print("benchmark:        buy-and-hold (same pairs, same timerange)")
+    for label, s in bah.items():
+        print(
+            f"  {label:<22}  return: {s['total_return_pct']:>8.1f}%"
+            f"  sharpe*: {s['sharpe_approx']:.4f}"
+            f"  dd: {s['max_drawdown_pct']:.1f}%"
+        )
+    print(
+        "  *sharpe: daily log-returns x sqrt(365); methodology differs from"
+        " strategy trade-based sharpe -- treat as directional reference only"
+    )
+
+
 def print_error(strategy_name: str, commit: str, err: BaseException) -> None:
     print("---")
     print(f"strategy:         {strategy_name}")
@@ -165,6 +253,10 @@ def main() -> int:
             print_error(name, commit, err)
             n_err += 1
         print()  # blank line between strategy blocks
+
+    bah = compute_bah_benchmark(USER_DATA / "data", "binance", TIMERANGE)
+    print_bah_benchmark(bah)
+    print()
 
     print(f"Done: {n_ok} succeeded, {n_err} failed.")
     return 0 if n_err == 0 else 1
