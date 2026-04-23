@@ -14,12 +14,12 @@ class AutoResearch(IStrategy):
     timeframe = "1h"
     can_short = False
 
-    minimal_roi = {"0": 0.007}
+    minimal_roi = {"0": 0.0075}
     stoploss = -0.08
 
     trailing_stop = False
-    trailing_stop_positive = 0.000
-    trailing_stop_positive_offset = 0.000
+    trailing_stop_positive = 0.0
+    trailing_stop_positive_offset = 0.0
     trailing_only_offset_is_reached = False
     process_only_new_candles = True
 
@@ -49,6 +49,6 @@ class AutoResearch(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_condition = ((dataframe["rsi"] > 60) & (dataframe["close"] > dataframe["bb_middle"] * 1.000))
+        exit_condition = ((dataframe["rsi"] > 60) & (dataframe["close"] > dataframe["bb_middle"] * 1.0))
         dataframe.loc[exit_condition, "exit_long"] = 1
         return dataframe
