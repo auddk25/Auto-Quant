@@ -120,7 +120,7 @@ class FactorMeanRevCandidate(IStrategy):
         stoch_column = "stoch_factor_k" if self._uses_factor_gate(metadata) else "stoch_stable_k"
         if stoch_column not in dataframe.columns:
             stoch_column = "stoch_k"
-        exit_cond = (dataframe[stoch_column] > 0.80) & (
+        exit_cond = (dataframe[stoch_column] > 0.70) & (
             dataframe["close"] > dataframe["bb_middle"]
         )
         dataframe.loc[exit_cond, "exit_long"] = 1
