@@ -11,7 +11,7 @@ Parent: root — derived from autoresearch/apr22 run, best commit 16f9046.
         879 experiments, Sharpe 2.10, max_dd 0.96%, 66 trades, pf 20.4.
         Key finding: ADX filter was the breakthrough (removed exit_profit_only
         regime trick; edge is real without it).
-Created: <fill after first commit>
+Created: 9864ab8
 Status: active
 """
 

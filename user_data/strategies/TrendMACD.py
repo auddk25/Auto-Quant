@@ -8,7 +8,7 @@ Hypothesis: BTC/ETH 1h exhibits persistent directional momentum after the
             (>20). Momentum strategies should capture sustained moves that
             mean-reversion misses by design.
 Parent: root
-Created: <fill after first commit>
+Created: 9864ab8
 Status: active
 """
 

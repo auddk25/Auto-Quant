@@ -8,7 +8,7 @@ Hypothesis: BTC/ETH 1h shows persistent upside moves when price closes above
             a squeeze tends to produce directional follow-through rather than
             immediate mean-reversion.
 Parent: root
-Created: <fill after first commit>
+Created: 9864ab8
 Status: active
 """
 
