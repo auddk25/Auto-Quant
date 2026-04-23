@@ -1,48 +1,48 @@
---- Session: 2026-04-23 (v0.2.0 rounds 41-50, session 5) ---
+--- Session: 2026-04-23 (v0.2.0 rounds 31-40, session 4) ---
 
 ## Branch
 autoresearch/apr23
 
-## Active strategies (end of round 50 — 50 total rounds)
+## Active strategies (end of round 40 — 40 total rounds)
 
 ### MeanRevADX [ANCHOR — never touch]
 - sharpe: 2.1016 | profit: 28.52% | dd: 0.96% | trades: 66 | pf: 20.36 | WR: 97%
 - RSI(20)<40 + close<BB_lower(25,2.18σ)×0.997 + EMA200 + ADX>19
 - Exit: (rsi>58) AND (close>bb_middle) | ROI: 0.008 | SL: -0.08
 
-### HybridMeanRev [BEST NEW SECONDARY]
-- sharpe: 0.5188 | profit: 17.22% | dd: 2.35% | trades: 77 | pf: 2.52 | WR: 72.7%
-- StochRSI K<0.25 + MFI < 35 + MeanRevADX filters (ADX>19, BB2.18*0.997)
-- Exit: (stoch_k>0.80) OR (close>bb_middle) | ROI: 0.010 | SL: -0.08
+### StochRev [CONFIRMED — best secondary]
+- sharpe: 0.1723 | profit: 4.48% | dd: 2.72% | trades: 54 | pf: 1.57 | WR: 64.8%
+- StochRSI K<0.15 crossing D + close<BB_lower(25, pair_dependent) + EMA200 + ADX>15
+- BTC: BB(25, 2.0σ); ETH: BB(25, 2.18σ)
+- Exit: (stoch_k>0.80) OR (close>bb_middle) | ROI: 0.010 | SL: -0.06
 
-### StochMeanRev [SOLID THIRD]
-- sharpe: 0.4715 | profit: 16.12% | dd: 2.35% | trades: 88 | pf: 2.09 | WR: 68.2%
-- StochRSI K<0.20 + MeanRevADX filters (ADX>19, BB2.18*0.997)
-- Exit: (stoch_k>0.80) OR (close>bb_middle) | ROI: 0.010 | SL: -0.08
+### RSI2Rev [FAIL — current 3rd slot]
+- sharpe: -0.3471 | profit: -11.61% | dd: 14.65% | trades: 176 | pf: 0.70 | WR: 61.4%
+- RSI(2)<5 + close<BB_lower(25, 2.0σ) + EMA200 + ADX>15
+- Exit: (rsi_2>70) OR (close>bb_middle)
 
-## Master findings (50 rounds)
+## Master findings (40 rounds)
 
-### The "Secret Sauce" — MeanRevADX filters
-R43-R50 proved that the specific oscillator (RSI, StochRSI, MFI, WilliamsR) matters LESS than the entry gates:
-1. `ADX > 19` (Trending market)
-2. `close < BB_lower(25, 2.18σ) * 0.997` (Deep volatility pierce with offset)
-3. `close > EMA200` (Macro uptrend)
-Any oscillator placed inside these gates yields a positive Sharpe on 1h BTC/ETH.
+### The ONLY approach that works on 1h BTC/ETH 2023-2025
+Mean-reversion: close < BB_lower(2.0-2.18σ) + MOMENTUM OSCILLATOR extreme + EMA200 uptrend
 
-### Dual Oscillator Gate (R48)
-Combining MFI (volume-weighted) and StochRSI (price-momentum) into a dual gate (HybridMeanRev) provided the best non-anchor Sharpe (0.52). Volume and price together filter out more false bounces.
+### Per-pair customization insight (R36)
+ETH is more volatile/noisy than BTC on 1h. It requires tighter entry gates (BB 2.18σ vs 2.0σ) to maintain edge. Using BTC settings on ETH results in lower Sharpe and higher DD.
 
-### ROI sensitivity (R49, R50)
-For these specific mean-reversion signals, `ROI 0.010` is consistently better than `0.008`. Capturing a slightly larger bounce (1.0% vs 0.8%) significantly improves Sharpe and PF.
+### Ruled out permanently (tested, failed, structural reasons)
+- Trend-following & Breakout (R38): BB Squeeze breakout failed (Sharpe -0.19, WR 17%). 1h crypto is mean-reverting; breakouts are mostly traps.
+- Fast oscillators (<7 periods) (R37, R40): RSI(2) and RSI(7) catch too many falling knives. The bounce doesn't happen fast enough to justify such short lookbacks.
+- Volume capitulation (R39): High volume during a drop is a continuation signal (capitulation), not a reversal signal. 
+- All "confirmation-after-extreme" signals (R28, R35): Entering after a hammer, RSI turning up, or MACD recovery fires after the bottom, often at the top of the initial bounce.
 
-## Stagnation counters (end of session 5)
-- MeanRevADX: stable rounds 31-50 (ANCHOR)
-- HybridMeanRev: created R48, evolved R49, stable R50.
-- StochMeanRev: created R43, stable R44-R49, evolved R50.
+## Stagnation counters (end of session 4)
+- MeanRevADX: stable rounds 31-40 (ANCHOR)
+- StochRev: evolved R31, R32, R33, R34, R35, R36, stable R37, R38, R39, evolved R40.
+- RSI2Rev: created R40.
 
-## Pending for next session (R51-60)
-1. Evolve HybridMeanRev: explore if `MFI < 30` (tighter) + `StochRSI < 0.20` (tighter) improves selectivity.
-2. Evolve StochMeanRev: per-pair customization (ETH 2.5σ?)
-3. Try **SuperTrend** as a trend filter instead of EMA200?
-4. Try **ATR dynamic exits**: exit when profit hits 1.5 * ATR (volatility-adjusted target).
-5. Next major milestone: stress test top 3 on 2022 bear market data.
+## Pending for next session (R41-50)
+1. KILL RSI2Rev: -0.35 Sharpe is unrecoverable. 
+2. Try Keltner Channel mean-reversion: EMA-based bands might be smoother than SMA-based BBs.
+3. Try ATR-based exits: exit if price moves X*ATR from entry.
+4. Try ADX trend-following but with a "pullback" gate: enter on a small drop during a strong trend.
+5. Consider: stop iterating on 1h and try 15m or 4h? (Requires data download).

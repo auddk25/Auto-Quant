@@ -56,8 +56,8 @@ class HybridMeanRev(IStrategy):
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
         # Dual gate
-        condition &= dataframe["stoch_k"] < 0.20
-        condition &= dataframe["mfi"] < 30
+        condition &= dataframe["stoch_k"] < 0.25
+        condition &= dataframe["mfi"] < 35
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
