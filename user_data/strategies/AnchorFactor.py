@@ -86,7 +86,9 @@ class AnchorFactor(IStrategy):
             condition &= stablecoin_growth_7d.notna()
             condition &= stablecoin_growth_7d > 0.0
         else:
-            condition = base_condition
+            condition = base_condition.copy()
+            condition &= dataframe["stablecoin_mcap_growth"].notna()
+            condition &= dataframe["stablecoin_mcap_growth"] > 0.0
 
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
