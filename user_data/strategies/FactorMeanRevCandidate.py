@@ -112,6 +112,8 @@ class FactorMeanRevCandidate(IStrategy):
             condition = base_condition & (
                 stoch_stable < self.stable_stoch_entry_threshold
             )
+            condition &= dataframe["funding_rate"].notna()
+            condition &= dataframe["funding_rate"] < self.max_funding_rate
 
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
