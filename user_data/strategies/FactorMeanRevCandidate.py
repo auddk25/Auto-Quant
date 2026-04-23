@@ -95,7 +95,7 @@ class FactorMeanRevCandidate(IStrategy):
 
         if self._uses_factor_gate(metadata):
             stoch_factor = dataframe.get("stoch_factor_k", dataframe["stoch_k"])
-            condition = base_condition & (stoch_factor < 0.20)
+            condition = base_condition & (stoch_factor < 0.15)
 
             # Require positive stablecoin liquidity impulse and avoid extreme funding.
             condition &= dataframe["funding_rate"].notna()
