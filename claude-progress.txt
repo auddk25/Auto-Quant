@@ -1,63 +1,48 @@
---- Session: 2026-04-23 (v0.2.0 rounds 21-30, session 3) ---
+--- Session: 2026-04-23 (v0.2.0 rounds 31-40, session 4) ---
 
 ## Branch
 autoresearch/apr23
 
-## Active strategies (end of round 30 — 30 total rounds)
+## Active strategies (end of round 40 — 40 total rounds)
 
 ### MeanRevADX [ANCHOR — never touch]
 - sharpe: 2.1016 | profit: 28.52% | dd: 0.96% | trades: 66 | pf: 20.36 | WR: 97%
 - RSI(20)<40 + close<BB_lower(25,2.18σ)×0.997 + EMA200 + ADX>19
 - Exit: (rsi>58) AND (close>bb_middle) | ROI: 0.008 | SL: -0.08
-- 97% WR = exceptional quality. Confirmed across all 30 rounds.
 
-### StochRev [CONFIRMED — second solid strategy]
-- sharpe: 0.1615 | profit: 4.30% | dd: 2.98% | trades: 66 | pf: 1.40 | WR: 64%
-- StochRSI K<0.15 crossing D + close<BB_lower(25,2.0σ) + EMA200 + ADX>15
+### StochRev [CONFIRMED — best secondary]
+- sharpe: 0.1723 | profit: 4.48% | dd: 2.72% | trades: 54 | pf: 1.57 | WR: 64.8%
+- StochRSI K<0.15 crossing D + close<BB_lower(25, pair_dependent) + EMA200 + ADX>15
+- BTC: BB(25, 2.0σ); ETH: BB(25, 2.18σ)
 - Exit: (stoch_k>0.80) OR (close>bb_middle) | ROI: 0.010 | SL: -0.06
 
-### FastRSIRev [KEEP — best third strategy found]
-- sharpe: 0.1165 | profit: 4.67% | dd: 4.36% | trades: 70 | pf: 1.34 | WR: 76%
-- RSI(7)<20 + RSI(20)>30 + close<BB_lower(25,2.18σ) + EMA200 + ADX>19
-- Exit: (rsi_fast>55) OR (close>bb_middle) | ROI: 0.008 | SL: -0.06
-- RSI(20)>30 makes this complementary to MeanRevADX (flash crashes only)
+### RSI2Rev [FAIL — current 3rd slot]
+- sharpe: -0.3471 | profit: -11.61% | dd: 14.65% | trades: 176 | pf: 0.70 | WR: 61.4%
+- RSI(2)<5 + close<BB_lower(25, 2.0σ) + EMA200 + ADX>15
+- Exit: (rsi_2>70) OR (close>bb_middle)
 
-## Master findings (30 rounds)
+## Master findings (40 rounds)
 
 ### The ONLY approach that works on 1h BTC/ETH 2023-2025
 Mean-reversion: close < BB_lower(2.0-2.18σ) + MOMENTUM OSCILLATOR extreme + EMA200 uptrend
-- "during the extreme" oscillators work; "recovery confirmation" signals never fire
+
+### Per-pair customization insight (R36)
+ETH is more volatile/noisy than BTC on 1h. It requires tighter entry gates (BB 2.18σ vs 2.0σ) to maintain edge. Using BTC settings on ETH results in lower Sharpe and higher DD.
 
 ### Ruled out permanently (tested, failed, structural reasons)
-- Trend-following: 3 approaches, all negative. 1h too noisy for trend.
-- Breakout: 3 approaches, all negative. 2023-25 bull market means constant new highs.
-- Ranging market (ADX<20): ADX filter contradicts BB_lower break.
-- Range-based oscillators (CCI, WilliamsR): correlated with BB_lower → too many trades
-- Volume oscillators (MFI): high volume = capitulation continues, not reversal
-- Price-action confirmation (hammer candle): enters AFTER recovery, at top of bounce
-- Recovery confirmation (MACD hist recovery, RSI turning up): fires after bottom passed
+- Trend-following & Breakout (R38): BB Squeeze breakout failed (Sharpe -0.19, WR 17%). 1h crypto is mean-reverting; breakouts are mostly traps.
+- Fast oscillators (<7 periods) (R37, R40): RSI(2) and RSI(7) catch too many falling knives. The bounce doesn't happen fast enough to justify such short lookbacks.
+- Volume capitulation (R39): High volume during a drop is a continuation signal (capitulation), not a reversal signal. 
+- All "confirmation-after-extreme" signals (R28, R35): Entering after a hammer, RSI turning up, or MACD recovery fires after the bottom, often at the top of the initial bounce.
 
-### RSI period findings
-- RSI(20)<40: OPTIMAL (66 trades, 97% WR, 0.96% DD) — the sweet spot
-- RSI(7)<20+RSI20>30: marginal positive (70 trades, 76% WR, 4.36% DD) — flash crashes
-- RSI(14)<30: marginal positive (39 trades, 79% WR, 6.23% DD) — between the two
-- RSI(7)<15: too few (17 trades), statistically insignificant
-- RSI(14)<35: too many (123 trades), no edge
+## Stagnation counters (end of session 4)
+- MeanRevADX: stable rounds 31-40 (ANCHOR)
+- StochRev: evolved R31, R32, R33, R34, R35, R36, stable R37, R38, R39, evolved R40.
+- RSI2Rev: created R40.
 
-## Stagnation counters (end of session 3)
-- MeanRevADX: stable always (special status — anchor)
-- StochRev: stable rounds 28+29+30 = 3 consecutive. MUST evolve in R31!
-- FastRSIRev: created R29, stable R30 = 1 consecutive stable
-
-## Pending for next session (R31-R40)
-1. MANDATORY: StochRev must evolve in R31 (3 consecutive stables: r28, r29, r30)
-   Options: BB threshold, ADX, ROI/SL, or try stoch_k crossover direction change
-2. FastRSIRev: explore if RSI(7)<18 (middle threshold) gives fewer but better trades
-3. Try per-pair customization: can strategies be parameterized differently for BTC vs ETH?
-   (Would require custom strategy code that reads metadata["pair"])
-4. Try ATR-based exit: exit when ATR has expanded past entry ATR by 1.5× (volatility exit)
-5. Consider: accept current state and focus on stress-testing (2022 bear market data?)
-
-## aiodns workaround (CRITICAL — must do every backtest run)
-DO NOT use `uv run run.py` — uv reinstalls aiodns which breaks DNS on Windows.
-USE: uv pip uninstall aiodns pycares 2>/dev/null; E:/code/AutoQuant/.venv/Scripts/python.exe run.py > run.log 2>&1
+## Pending for next session (R41-50)
+1. KILL RSI2Rev: -0.35 Sharpe is unrecoverable. 
+2. Try Keltner Channel mean-reversion: EMA-based bands might be smoother than SMA-based BBs.
+3. Try ATR-based exits: exit if price moves X*ATR from entry.
+4. Try ADX trend-following but with a "pullback" gate: enter on a small drop during a strong trend.
+5. Consider: stop iterating on 1h and try 15m or 4h? (Requires data download).
