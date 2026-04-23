@@ -46,6 +46,7 @@ class StochMeanRev(IStrategy):
         dataframe["stoch_d"] = stoch["slowd"] / 100.0
         
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
+        dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
         dataframe["bb_middle"] = bands["middleband"]
@@ -61,7 +62,7 @@ class StochMeanRev(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Exit when stoch_k > 0.80 or price reclaims the BB midline
-        exit_cond = (dataframe["stoch_k"] > 0.80) | (dataframe["close"] > dataframe["bb_middle"])
+        # Exit when stoch_k > 0.80 or price reclaims the EMA20
+        exit_cond = (dataframe["stoch_k"] > 0.80) | (dataframe["close"] > dataframe["ema20"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
