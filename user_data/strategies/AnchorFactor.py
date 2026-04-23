@@ -42,8 +42,6 @@ class AnchorFactor(IStrategy):
     startup_candle_count: int = 200
     enriched_root: Path | None = None
     max_funding_rate = 0.001
-    eth_stoch_entry_threshold = 0.22
-    eth_stoch_rsi_period = 20
 
     factor_columns = [
         "funding_rate",
@@ -59,11 +57,6 @@ class AnchorFactor(IStrategy):
         )
 
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=20)
-        stoch_eth = ta.STOCH(
-            dataframe.assign(high=dataframe["rsi"], low=dataframe["rsi"], close=dataframe["rsi"]),
-            fastk_period=self.eth_stoch_rsi_period, slowk_period=3, slowd_period=3,
-        )
-        dataframe["stoch_eth_k"] = stoch_eth["slowk"] / 100.0
         dataframe["stablecoin_mcap_growth_7d"] = dataframe["stablecoin_mcap_growth"].rolling(
             24 * 7
         ).sum()
@@ -80,10 +73,10 @@ class AnchorFactor(IStrategy):
         base_condition = dataframe["close"] > dataframe["ema200"]
         base_condition &= dataframe["adx"] > 19
         base_condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
+        base_condition &= dataframe["rsi"] < 40
 
         if self._uses_factor_gate(metadata):
-            # BTC: RSI<40 anchor signal + macro factor gates
-            condition = base_condition & (dataframe["rsi"] < 40)
+            condition = base_condition.copy()
             condition &= dataframe["funding_rate"].notna()
             condition &= dataframe["funding_rate"] < self.max_funding_rate
             condition &= dataframe["stablecoin_mcap_growth"].notna()
@@ -93,10 +86,7 @@ class AnchorFactor(IStrategy):
             condition &= stablecoin_growth_7d.notna()
             condition &= stablecoin_growth_7d > 0.0
         else:
-            # ETH: StochRSI<0.22 (performs better in bear markets than RSI<40)
-            condition = base_condition & (
-                dataframe["stoch_eth_k"] < self.eth_stoch_entry_threshold
-            )
+            condition = base_condition
 
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
