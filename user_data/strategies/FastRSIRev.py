@@ -4,12 +4,12 @@ FastRSIRev — Fast RSI(7) flash-crash reversal inside 200-EMA uptrend
 Paradigm: mean-reversion
 Hypothesis: BTC/ETH 1h reverts from RSI(7) < 20 (rapid 7-bar decline to
             deep oversold) when price has broken below BB lower band
-            (25-period, 2.18σ). RSI(7) is much faster than MeanRevADX's
-            RSI(20) — it fires on sharp, short flash-crash moves that
-            haven't yet driven RSI(20) below 40. These are structurally
-            different events: explosive single-session drops vs sustained
-            multi-day selloffs. Expected to find entries MeanRevADX misses
-            because the 20-period window hasn't yet registered them.
+            (25-period, 2.18σ) AND RSI(20) is still above 30. The RSI(20)>30
+            gate ensures this is a PURE FLASH CRASH that hasn't yet become a
+            sustained selloff (which MeanRevADX catches via RSI(20)<40).
+            This makes FastRSIRev and MeanRevADX complementary: FastRSIRev
+            handles explosive single-session drops; MeanRevADX handles
+            sustained multi-day selloffs.
 Parent: root
 Created: <fill after commit>
 Status: active
@@ -43,7 +43,8 @@ class FastRSIRev(IStrategy):
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         dataframe["rsi_fast"] = ta.RSI(dataframe, timeperiod=7)
-        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.5, nbdevdn=2.5)
+        dataframe["rsi_slow"] = ta.RSI(dataframe, timeperiod=20)
+        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
         dataframe["bb_lower"] = bands["lowerband"]
         dataframe["bb_middle"] = bands["middleband"]
         return dataframe
@@ -53,6 +54,7 @@ class FastRSIRev(IStrategy):
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"]
         condition &= dataframe["rsi_fast"] < 20
+        condition &= dataframe["rsi_slow"] > 30
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
