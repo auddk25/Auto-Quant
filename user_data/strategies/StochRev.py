@@ -47,7 +47,7 @@ class StochRev(IStrategy):
         )
         dataframe["stoch_k"] = stoch["slowk"] / 100.0
         dataframe["stoch_d"] = stoch["slowd"] / 100.0
-        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.5, nbdevdn=2.5)
+        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.0, nbdevdn=2.0)
         dataframe["bb_lower"] = bands["lowerband"]
         dataframe["bb_middle"] = bands["middleband"]
         return dataframe

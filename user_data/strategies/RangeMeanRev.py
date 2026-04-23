@@ -40,22 +40,22 @@ class RangeMeanRev(IStrategy):
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
-        bands = ta.BBANDS(dataframe, timeperiod=20, nbdevup=2.0, nbdevdn=2.0)
-        dataframe["bb_upper"] = bands["upperband"]
-        dataframe["bb_middle"] = bands["middleband"]
-        dataframe["bb_lower"] = bands["lowerband"]
+        dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
+        stoch = ta.STOCH(dataframe, fastk_period=14, slowk_period=3, slowd_period=3)
+        dataframe["stoch_k"] = stoch["slowk"]
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # ranging but not in a major downtrend
+        # ranging regime (no strong trend) but in macro uptrend
         condition = dataframe["adx"] < 20
-        condition &= dataframe["close"] > dataframe["ema50"]
-        condition &= dataframe["rsi"] < 30
-        condition &= dataframe["close"] < dataframe["bb_lower"]
+        condition &= dataframe["close"] > dataframe["ema200"]
+        # dual oversold: both RSI and Stoch confirm extreme reading
+        condition &= dataframe["rsi"] < 35
+        condition &= dataframe["stoch_k"] < 20
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["rsi"] > 60) | (dataframe["close"] > dataframe["bb_middle"])
+        exit_cond = (dataframe["rsi"] > 60) | (dataframe["stoch_k"] > 75)
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
