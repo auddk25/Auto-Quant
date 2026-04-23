@@ -40,7 +40,7 @@ class StochMeanRev(IStrategy):
         rsi = ta.RSI(dataframe, timeperiod=20)
         stoch = ta.STOCH(
             dataframe.assign(high=rsi, low=rsi, close=rsi),
-            fastk_period=14, slowk_period=3, slowd_period=3,
+            fastk_period=20, slowk_period=3, slowd_period=3,
         )
         dataframe["stoch_k"] = stoch["slowk"] / 100.0
         dataframe["stoch_d"] = stoch["slowd"] / 100.0
