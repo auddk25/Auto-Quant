@@ -1,11 +1,11 @@
 """
-MFIMeanRev — Money Flow Index (MFI) with MeanRevADX filters
+HybridMeanRev — Dual Oscillator mean reversion (MFI + StochRSI)
 
 Paradigm: mean-reversion
-Hypothesis: MFI (volume-weighted RSI) < 25 oversold combined with the 
-            high-quality trend and volatility gates from MeanRevADX (ADX>19, 
-            BB2.18*0.997).
-Parent: MeanRevADX
+Hypothesis: Combining MFI (volume-weighted momentum) with StochRSI (fast price 
+            momentum) as a dual gate, plus the MeanRevADX filters (ADX>19, 
+            BB2.18*0.997), provides the most reliable entries.
+Parent: MeanRevADX, StochMeanRev, MFIMeanRev
 Created: 2026-04-23
 Status: active
 """
@@ -16,7 +16,7 @@ import talib.abstract as ta
 from freqtrade.strategy import IStrategy
 
 
-class MFIMeanRev(IStrategy):
+class HybridMeanRev(IStrategy):
     INTERFACE_VERSION = 3
 
     timeframe = "1h"
@@ -35,6 +35,14 @@ class MFIMeanRev(IStrategy):
     startup_candle_count: int = 200
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        # Standard RSI(14) based StochRSI
+        rsi = ta.RSI(dataframe, timeperiod=14)
+        stoch = ta.STOCH(
+            dataframe.assign(high=rsi, low=rsi, close=rsi),
+            fastk_period=14, slowk_period=3, slowd_period=3,
+        )
+        dataframe["stoch_k"] = stoch["slowk"] / 100.0
+        
         dataframe["mfi"] = ta.MFI(dataframe, timeperiod=14)
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
@@ -47,12 +55,14 @@ class MFIMeanRev(IStrategy):
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
-        condition &= dataframe["mfi"] < 30
+        # Dual gate
+        condition &= dataframe["stoch_k"] < 0.25
+        condition &= dataframe["mfi"] < 35
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Exit when MFI > 70 or price reclaims the BB midline
-        exit_cond = (dataframe["mfi"] > 70) | (dataframe["close"] > dataframe["bb_middle"])
+        # Exit when stoch_k > 0.80 or price reclaims the BB midline
+        exit_cond = (dataframe["stoch_k"] > 0.80) | (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
