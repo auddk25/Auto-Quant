@@ -28,7 +28,7 @@ class FastRSIRev(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 0.008}
-    stoploss = -0.04
+    stoploss = -0.06
 
     trailing_stop = False
     process_only_new_candles = True
@@ -57,6 +57,6 @@ class FastRSIRev(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["rsi_fast"] > 55) | (dataframe["close"] > dataframe["bb_middle"])
+        exit_cond = (dataframe["rsi_fast"] > 50) | (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
