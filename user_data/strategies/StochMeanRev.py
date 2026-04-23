@@ -56,7 +56,7 @@ class StochMeanRev(IStrategy):
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
-        condition &= dataframe["stoch_k"] < 0.15
+        condition &= dataframe["stoch_k"] < 0.20
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
