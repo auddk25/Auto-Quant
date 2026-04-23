@@ -4,8 +4,9 @@ Frozen snapshots of each autoresearch run. Each folder captures:
 
 - `meta.yaml` — structured metadata (asset, dates, counts, peak metrics, known limitations)
 - `results.tsv` — journal snapshot at the moment the run was declared done
-- `strategy.final.py` — the winning strategy file
+- `strategy.final.py` (v0.1.0) OR `strategies/` (v0.2.0+, multi-strategy runs) — the final strategy file(s)
 - `retrospective.md` — full post-mortem + interpretation
+- `run.log` — (optional) the last backtest's raw output
 
 The corresponding git state is preserved via a tag (e.g. `v0.1.0` → peak commit of that run). The original research branch is kept around too (e.g. `autoresearch/apr22`).
 
@@ -35,3 +36,4 @@ rubber-stamp.
 | Version | Date | Asset | Experiments | Peak Sharpe | Headline |
 |---|---|---|---|---|---|
 | [0.1.0](0.1.0/) | 2026-04-22 | BTC/USDT + ETH/USDT @ 1h | 99 | 1.44 (true edge: 0.19) | Pattern validated; agent self-reversed Goodhart exploits |
+| [0.2.0](0.2.0/) | 2026-04-23 | BTC/USDT + ETH/USDT @ 1h | 81 | 0.67 (clean, no gaming) | Multi-strategy architecture: 5 paradigms tested / 3 kept / zero Goodhart / 3.5× better true-edge than v0.1.0 |
