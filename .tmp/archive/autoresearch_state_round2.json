@@ -1,0 +1,45 @@
+{
+  "session_experiments": 100,
+  "candidate_index": 100,
+  "base_params": {
+    "rsi_period": 20,
+    "rsi_entry": 39,
+    "rsi_exit": 60,
+    "roi": 0.0075,
+    "stoploss": -0.08,
+    "bb_period": 25,
+    "bb_dev": 2.25,
+    "trend_mode": "ema200",
+    "pullback_mode": "bb_lower",
+    "entry_buffer": 0.997,
+    "bbmid_exit_buffer": 1.0,
+    "exit_mode": "rsi_and_bbmid",
+    "require_rsi_rising": false,
+    "require_green_candle": false,
+    "require_close_above_ema50": false,
+    "require_ema20_above_ema50": false,
+    "trailing_stop": false,
+    "trailing_stop_positive": 0.0,
+    "trailing_stop_positive_offset": 0.0,
+    "trailing_only_offset_is_reached": false,
+    "use_exit_signal": true,
+    "exit_profit_only": false,
+    "ignore_roi_if_entry_signal": true
+  },
+  "best": {
+    "commit": "187e595",
+    "sharpe": 0.4319,
+    "total_profit_pct": 16.7821,
+    "max_drawdown_pct": -4.055,
+    "trade_count": 75,
+    "profit_factor": 2.8001,
+    "utility": 0.559171
+  },
+  "kept_commits": [
+    "07e5087",
+    "a07759a",
+    "f39f86e",
+    "5859ee8",
+    "187e595"
+  ]
+}

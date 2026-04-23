@@ -1,0 +1,84 @@
+--- Session: 2026-04-23 (v0.2.0 rounds 11-20) ---
+
+## Branch
+autoresearch/apr23
+
+## Active strategies (end of round 20)
+
+### MeanRevADX [KEEP — best, anchored]
+- sharpe: 2.1016 | profit: 28.52% | dd: 0.96% | trades: 66 | pf: 20.36
+- RSI(20)<40 + close<BB_lower(25,2.18σ)×0.997 + EMA200 + ADX>19
+- Exit: (rsi>58) AND (close>bb_middle) | ROI: 0.008 | SL: -0.08
+- Commit: 9864ab8 (ported from apr22 best). 97% WR — exceptional.
+
+### StochRev [KEEP — second confirmed strategy]
+- sharpe: 0.1615 | profit: 4.30% | dd: 2.98% | trades: 66 | pf: 1.40
+- StochRSI K<0.15 crossing D + close<BB_lower(25,2.0σ) + EMA200 + ADX>15
+- Exit: (stoch_k>0.80) OR (close>bb_middle) | ROI: 0.010 | SL: -0.06
+- Confirmed stable across rounds 13-20 with minor deviations.
+
+### FastRSIRev [KEEP — third positive strategy, marginal]
+- sharpe: 0.1165 | profit: 4.67% | dd: 4.36% | trades: 70 | pf: 1.34
+- RSI(7)<20 + RSI(20)>30 + close<BB_lower(25,2.18σ) + EMA200 + ADX>19
+- Exit: (rsi_fast>55) OR (close>bb_middle) | ROI: 0.008 | SL: -0.06
+- RSI(20)>30 filter makes it complementary to MeanRevADX (avoids overlap).
+
+## What worked (session 2 findings)
+
+### Core insight confirmed
+Only MOMENTUM OSCILLATORS (RSI family) add independent filtering beyond BB_lower:
+- RSI measures up/down close velocity — independent from price-level metrics
+- StochRSI measures RSI's own extreme — even faster signal
+- RSI(7) catches flash crashes; RSI(20) catches sustained selloffs
+- These fire at DIFFERENT bars → genuinely complementary
+
+### Failed oscillator classes
+- CCI, WilliamsR: RANGE-BASED (measure price vs recent range) — correlated with BB_lower → too many trades (~240) → negative
+- MFI: VOLUME-BASED (high-volume selling = capitulation that continues) → negative
+- All non-RSI oscillators tried in rounds 11-14
+
+### FastRSIRev tuning lessons
+- Optimal BB: 2.18σ (same as MeanRevADX) — tighter 2.5σ filters good entries
+- Optimal SL: -0.06 (not -0.04) — mean-reversion needs room to breathe; tight stops = more losers
+- Optimal exit: RSI(7)>55 (not >50) — earlier exit clips recovery
+- RSI(20)>30 filter: reduces DD (4.80→4.36%) by excluding MeanRevADX-territory entries
+
+### StochRev tuning lessons
+- Optimal stoch_k: <0.15 (not <0.10 — stricter filters good entries)
+- Optimal ADX: >15 (not >19 — ADX>19 loses good trades for stoch-based entry)
+- OR exit is critical (not AND)
+
+## What failed (this session)
+- MFI<20 + BB_lower: volume-confirmed capitulation selects continuation not reversal
+- CCI<-100 + BB_lower: 244 trades — price-deviation oscillator correlated with BB
+- WilliamsR<-80 + BB_lower: 249 trades — range-based, same structural flaw as CCI
+- RSI(7)<15: only 17 trades over 3 years — too few, no statistical significance
+- RSI(7) + SL=-0.04: DD INCREASED (4.80→6.73%) — tight stops hurt mean-reversion
+- RSI(7) + BB(2.5σ): 61 trades, worse quality vs 72 trades at 2.18σ
+
+## Stagnation counters (end of session)
+- MeanRevADX: stable since forever, but always a key anchor (no stagnation issue)
+- StochRev: evolved R19 (stagnation reset). Next stable count: 1 (R20)
+- FastRSIRev: evolved R20. Next stable count: 0
+
+## Key open questions for next session
+1. Are MeanRevADX and FastRSIRev actually complementary (different entry bars)?
+   → Test: do they fire simultaneously or on different candles?
+2. Can StochRev DD be reduced? Currently 2.98% vs MeanRevADX 0.96%. 
+   → Try tighter BB(2.18σ×0.997) like MeanRevADX's entry gate
+3. Is there a paradigm we haven't tried that might work?
+   → From retrospective: per-pair customization, ATR dynamic exits
+4. FastRSIRev DD at 4.36% — can it be reduced to <3%?
+   → Idea: only enter if prior candle also had RSI(7) declining (still falling, not bottomed)
+
+## Pending for next session (R21-R30)
+1. Try StochRev with BB(2.0σ)×0.997 (tighter like MeanRevADX to reduce DD)
+2. Try FastRSIRev with RSI(7) < RSI(7).shift(1) entry filter (momentum still declining)
+3. Explore ATR-based exit: exit when ATR(7) shrinks below entry ATR
+4. Per-pair idea: separate BTC and ETH filters (might need custom code)
+5. Consider: are there any momentum/trend ideas untested in 2023-25 bull run?
+
+## aiodns workaround (IMPORTANT)
+Run backtests with:
+  uv pip uninstall aiodns pycares 2>/dev/null; E:/code/AutoQuant/.venv/Scripts/python.exe run.py > run.log 2>&1
+NOT `uv run run.py` — uv reinstalls aiodns which breaks DNS resolution on Windows.
