@@ -44,7 +44,14 @@ class FastRSIRev(IStrategy):
         dataframe["rsi_fast"] = ta.RSI(dataframe, timeperiod=7)
         dataframe["rsi_slow"] = ta.RSI(dataframe, timeperiod=20)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
-        dataframe["bb_lower"] = bands["lowerband"]
+        
+        # Per-pair customization
+        pair = metadata.get("pair", "")
+        if "BTC" in pair:
+            dataframe["bb_lower"] = bands["lowerband"] * 0.997
+        else:
+            dataframe["bb_lower"] = bands["lowerband"] * 0.995
+            
         dataframe["bb_middle"] = bands["middleband"]
         return dataframe
 
