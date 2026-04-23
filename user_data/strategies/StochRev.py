@@ -57,11 +57,17 @@ class StochRev(IStrategy):
             
         dataframe["bb_lower"] = bands["lowerband"]
         dataframe["bb_middle"] = bands["middleband"]
+        
+        # Volatility gate
+        dataframe["bb_width"] = (bands["upperband"] - bands["lowerband"]) / bands["middleband"]
+        dataframe["bb_width_mean"] = dataframe["bb_width"].rolling(window=20).mean()
+        
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 15
+        condition &= dataframe["bb_width"] > dataframe["bb_width_mean"]
         condition &= dataframe["close"] < dataframe["bb_lower"]
         condition &= dataframe["stoch_k"] < 0.15
         condition &= dataframe["stoch_k"] > dataframe["stoch_d"]
