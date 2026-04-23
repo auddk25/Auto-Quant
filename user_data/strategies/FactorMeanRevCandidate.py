@@ -51,7 +51,6 @@ class FactorMeanRevCandidate(IStrategy):
     factor_columns = [
         "funding_rate",
         "stablecoin_mcap_growth",
-        "fed_net_liquidity",
     ]
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -81,10 +80,6 @@ class FactorMeanRevCandidate(IStrategy):
         dataframe["stablecoin_mcap_growth_7d"] = dataframe["stablecoin_mcap_growth"].rolling(
             24 * 7
         ).sum()
-        # Fed liquidity 4-week momentum: positive = improving macro conditions
-        dataframe["fed_liq_momentum_28d"] = (
-            dataframe["fed_net_liquidity"] - dataframe["fed_net_liquidity"].shift(24 * 28)
-        )
 
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
@@ -112,10 +107,6 @@ class FactorMeanRevCandidate(IStrategy):
             )
             condition &= stablecoin_growth_7d.notna()
             condition &= stablecoin_growth_7d > 0.0
-            condition &= dataframe["fed_net_liquidity"].notna()
-            fed_momentum = dataframe.get("fed_liq_momentum_28d", dataframe["fed_net_liquidity"])
-            condition &= fed_momentum.notna()
-            condition &= fed_momentum > 0
         else:
             stoch_stable = dataframe.get("stoch_stable_k", dataframe["stoch_k"])
             condition = base_condition & (
