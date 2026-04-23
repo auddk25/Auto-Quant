@@ -84,7 +84,6 @@ class FactorMeanRevCandidate(IStrategy):
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
-        dataframe["bb_upper"] = bands["upperband"]
         dataframe["bb_middle"] = bands["middleband"]
         dataframe["bb_lower"] = bands["lowerband"]
         return dataframe
@@ -122,7 +121,7 @@ class FactorMeanRevCandidate(IStrategy):
         if stoch_column not in dataframe.columns:
             stoch_column = "stoch_k"
         exit_cond = (dataframe[stoch_column] > 0.70) & (
-            dataframe["close"] > dataframe["bb_upper"]
+            dataframe["close"] > dataframe["bb_middle"]
         )
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
