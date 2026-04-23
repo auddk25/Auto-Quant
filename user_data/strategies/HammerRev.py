@@ -68,6 +68,7 @@ class HammerRev(IStrategy):
         condition &= dataframe["lower_shadow"] > 2 * dataframe["body"]
         condition &= dataframe["upper_shadow"] <= dataframe["body"]
         condition &= dataframe["body"] > 0
+        condition &= dataframe["rsi"] < 45
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
