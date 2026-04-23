@@ -2,11 +2,11 @@
 StochRev — Stochastic RSI oversold bounce inside 200-EMA uptrend
 
 Paradigm: mean-reversion
-Hypothesis: BTC/ETH 1h reverts from StochRSI < 0.15 (fast oscillator deep
-            oversold) when the macro trend (EMA200) is up and ADX confirms
-            the trend hasn't collapsed. StochRSI moves faster than plain RSI
-            and should catch entries that RSI misses or catches too late,
-            complementing MeanRevADX which uses a BB-lower price gate.
+Hypothesis: BTC/ETH 1h reverts from StochRSI < 0.10 extreme oversold when
+            price has also broken below the BB lower band (25-period, 2.5σ).
+            The dual gate (fast oscillator + price below volatility band)
+            enforces selectivity. Targets entries MeanRevADX misses because
+            plain RSI(20) hasn't yet crossed <40 but StochRSI is already extreme.
 Parent: root
 Created: <fill after commit>
 Status: active
@@ -39,7 +39,6 @@ class StochRev(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
-        # StochRSI = stochastic applied to RSI values
         rsi = ta.RSI(dataframe, timeperiod=14)
         dataframe["rsi"] = rsi
         stoch = ta.STOCH(
@@ -48,19 +47,22 @@ class StochRev(IStrategy):
         )
         dataframe["stoch_k"] = stoch["slowk"] / 100.0
         dataframe["stoch_d"] = stoch["slowd"] / 100.0
+        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.5, nbdevdn=2.5)
+        dataframe["bb_lower"] = bands["lowerband"]
+        dataframe["bb_middle"] = bands["middleband"]
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 15
-        # StochRSI oversold and K crossing above D
-        condition &= dataframe["stoch_k"] < 0.15
+        condition &= dataframe["close"] < dataframe["bb_lower"]
+        condition &= dataframe["stoch_k"] < 0.10
         condition &= dataframe["stoch_k"] > dataframe["stoch_d"]
         condition &= dataframe["stoch_k"].shift(1) <= dataframe["stoch_d"].shift(1)
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["stoch_k"] > 0.80) | (dataframe["rsi"] > 65)
+        exit_cond = (dataframe["stoch_k"] > 0.80) | (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
