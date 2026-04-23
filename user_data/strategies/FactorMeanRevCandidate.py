@@ -62,6 +62,7 @@ class FactorMeanRevCandidate(IStrategy):
         )
 
         rsi = ta.RSI(dataframe, timeperiod=20)
+        dataframe["rsi"] = rsi
         stoch_factor = ta.STOCH(
             dataframe.assign(high=rsi, low=rsi, close=rsi),
             fastk_period=self.stoch_rsi_period,
@@ -108,10 +109,7 @@ class FactorMeanRevCandidate(IStrategy):
             condition &= stablecoin_growth_7d.notna()
             condition &= stablecoin_growth_7d > 0.0
         else:
-            stoch_stable = dataframe.get("stoch_stable_k", dataframe["stoch_k"])
-            condition = base_condition & (
-                stoch_stable < self.stable_stoch_entry_threshold
-            )
+            condition = base_condition & (dataframe["rsi"] < 40)
 
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
