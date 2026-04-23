@@ -1,12 +1,13 @@
 """
-StochRev — Stochastic RSI oversold bounce inside 200-EMA uptrend
+MFIRev — Money Flow Index oversold bounce inside 200-EMA uptrend
 
 Paradigm: mean-reversion
-Hypothesis: BTC/ETH 1h reverts from StochRSI < 0.10 extreme oversold when
-            price has also broken below the BB lower band (25-period, 2.5σ).
-            The dual gate (fast oscillator + price below volatility band)
-            enforces selectivity. Targets entries MeanRevADX misses because
-            plain RSI(20) hasn't yet crossed <40 but StochRSI is already extreme.
+Hypothesis: BTC/ETH 1h reverts from MFI<20 volume-confirmed oversold when
+            price has also broken below the BB lower band (25-period, 2.0σ).
+            MFI incorporates volume unlike RSI/StochRSI — catches genuine
+            capitulation (high-volume selling at price extremes). Expected to
+            find entries that RSI<40 and StochRSI<0.15 both miss because
+            volume confirmation acts as a different structural gate.
 Parent: root
 Created: <fill after commit>
 Status: active
@@ -18,14 +19,14 @@ import talib.abstract as ta
 from freqtrade.strategy import IStrategy
 
 
-class StochRev(IStrategy):
+class MFIRev(IStrategy):
     INTERFACE_VERSION = 3
 
     timeframe = "1h"
     can_short = False
 
     minimal_roi = {"0": 0.008}
-    stoploss = -0.08
+    stoploss = -0.06
 
     trailing_stop = False
     process_only_new_candles = True
@@ -39,14 +40,7 @@ class StochRev(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
-        rsi = ta.RSI(dataframe, timeperiod=14)
-        dataframe["rsi"] = rsi
-        stoch = ta.STOCH(
-            dataframe.assign(high=rsi, low=rsi, close=rsi),
-            fastk_period=14, slowk_period=3, slowd_period=3,
-        )
-        dataframe["stoch_k"] = stoch["slowk"] / 100.0
-        dataframe["stoch_d"] = stoch["slowd"] / 100.0
+        dataframe["mfi"] = ta.MFI(dataframe, timeperiod=14)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.0, nbdevdn=2.0)
         dataframe["bb_lower"] = bands["lowerband"]
         dataframe["bb_middle"] = bands["middleband"]
@@ -56,13 +50,11 @@ class StochRev(IStrategy):
         condition = dataframe["close"] > dataframe["ema200"]
         condition &= dataframe["adx"] > 19
         condition &= dataframe["close"] < dataframe["bb_lower"]
-        condition &= dataframe["stoch_k"] < 0.15
-        condition &= dataframe["stoch_k"] > dataframe["stoch_d"]
-        condition &= dataframe["stoch_k"].shift(1) <= dataframe["stoch_d"].shift(1)
+        condition &= dataframe["mfi"] < 20
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["stoch_k"] > 0.80) | (dataframe["close"] > dataframe["bb_middle"])
+        exit_cond = (dataframe["mfi"] > 60) | (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
