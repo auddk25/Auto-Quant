@@ -39,6 +39,7 @@ class RangeMeanRev(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
+        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
         bands = ta.BBANDS(dataframe, timeperiod=20, nbdevup=2.0, nbdevdn=2.0)
         dataframe["bb_upper"] = bands["upperband"]
         dataframe["bb_middle"] = bands["middleband"]
@@ -46,10 +47,10 @@ class RangeMeanRev(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # ranging regime: ADX low, no strong directional trend
+        # ranging but not in a major downtrend
         condition = dataframe["adx"] < 20
-        # deep oversold with price below lower band
-        condition &= dataframe["rsi"] < 25
+        condition &= dataframe["close"] > dataframe["ema50"]
+        condition &= dataframe["rsi"] < 30
         condition &= dataframe["close"] < dataframe["bb_lower"]
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
