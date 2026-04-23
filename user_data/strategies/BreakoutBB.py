@@ -1,12 +1,11 @@
 """
-BreakoutBB — Bollinger Band upper breakout after low-volatility squeeze
+BreakoutBB — breakout from sustained BB squeeze (5+ bars compressed)
 
 Paradigm: breakout
-Hypothesis: BTC/ETH 1h shows persistent upside moves when price closes above
-            the upper Bollinger Band (20-period, 2σ) following a period of
-            compressed volatility (BB width < 0.06). Volatility expansion after
-            a squeeze tends to produce directional follow-through rather than
-            immediate mean-reversion.
+Hypothesis: BTC/ETH 1h produces strong directional moves when price breaks
+            the upper BB after a sustained (5+ candle) period of compressed
+            volatility (width < 0.04). Sustained compression builds energy;
+            single-bar squeezes are noise, multi-bar squeezes signal coiling.
 Parent: root
 Created: 9864ab8
 Status: active
@@ -38,6 +37,7 @@ class BreakoutBB(IStrategy):
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         bands = ta.BBANDS(dataframe, timeperiod=20, nbdevup=2.0, nbdevdn=2.0)
         dataframe["bb_upper"] = bands["upperband"]
         dataframe["bb_middle"] = bands["middleband"]
@@ -45,19 +45,25 @@ class BreakoutBB(IStrategy):
         dataframe["bb_width"] = (
             (dataframe["bb_upper"] - dataframe["bb_lower"]) / dataframe["bb_middle"]
         )
-        dataframe["bb_width_prev"] = dataframe["bb_width"].shift(1)
+        # count consecutive bars below squeeze threshold
+        squeeze_mask = (dataframe["bb_width"] < 0.04).astype(int)
+        dataframe["squeeze_bars"] = squeeze_mask.groupby(
+            (squeeze_mask != squeeze_mask.shift()).cumsum()
+        ).cumcount()
         dataframe["volume_ma"] = ta.SMA(dataframe["volume"], timeperiod=20)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        squeeze = dataframe["bb_width_prev"] < 0.03
-        breakout = dataframe["close"] > dataframe["bb_upper"]
-        momentum = dataframe["rsi"] > 55
-        vol_confirm = dataframe["volume"] > dataframe["volume_ma"] * 1.5
-        dataframe.loc[squeeze & breakout & momentum & vol_confirm, "enter_long"] = 1
+        # sustained squeeze (5+ bars), then breakout above upper band
+        condition = dataframe["close"] > dataframe["ema200"]
+        condition &= dataframe["squeeze_bars"].shift(1) >= 5
+        condition &= dataframe["close"] > dataframe["bb_upper"]
+        condition &= dataframe["rsi"] > 52
+        condition &= dataframe["volume"] > dataframe["volume_ma"] * 1.5
+        dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["rsi"] > 80) | (dataframe["close"] < dataframe["bb_middle"])
+        exit_cond = (dataframe["rsi"] > 78) | (dataframe["close"] < dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe

@@ -1,12 +1,11 @@
 """
-TrendMACD — MACD momentum crossover following the 200-EMA trend
+TrendMACD — buy pullback to EMA20 inside a strong EMA triple-alignment trend
 
 Paradigm: trend-following
-Hypothesis: BTC/ETH 1h exhibits persistent directional momentum after the
-            MACD line crosses above its signal line, but only when price is
-            above the 200-EMA (macro uptrend) and ADX confirms trend strength
-            (>20). Momentum strategies should capture sustained moves that
-            mean-reversion misses by design.
+Hypothesis: BTC/ETH 1h shows persistent bounces from EMA20 when all three
+            EMAs (20>50>200) are aligned upward and ADX confirms trend
+            strength. This captures shallow trend pullbacks rather than deep
+            oversold events, complementing the deep-dip mean-reversion approach.
 Parent: root
 Created: 9864ab8
 Status: active
@@ -37,25 +36,28 @@ class TrendMACD(IStrategy):
     startup_candle_count: int = 200
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
+        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
-        macd = ta.MACD(dataframe, fastperiod=12, slowperiod=26, signalperiod=9)
-        dataframe["macd"] = macd["macd"]
-        dataframe["macdsignal"] = macd["macdsignal"]
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        condition = dataframe["close"] > dataframe["ema200"]
-        condition &= dataframe["adx"] > 25
-        condition &= dataframe["rsi"] > 50
-        condition &= dataframe["macd"] > 0
-        condition &= dataframe["macd"] > dataframe["macdsignal"]
-        condition &= dataframe["macd"].shift(1) <= dataframe["macdsignal"].shift(1)
+        # all EMAs aligned up (strong trend)
+        condition = dataframe["ema20"] > dataframe["ema50"]
+        condition &= dataframe["ema50"] > dataframe["ema200"]
+        condition &= dataframe["adx"] > 20
+        # price touching EMA20 from above (shallow pullback)
+        condition &= dataframe["low"] <= dataframe["ema20"] * 1.002
+        condition &= dataframe["close"] > dataframe["ema20"] * 0.995
+        # not oversold (different from MeanRevADX)
+        condition &= dataframe["rsi"] > 42
+        condition &= dataframe["rsi"] < 65
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["macd"] < dataframe["macdsignal"]) | (dataframe["rsi"] > 70)
+        exit_cond = (dataframe["rsi"] > 72) | (dataframe["ema20"] < dataframe["ema50"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
