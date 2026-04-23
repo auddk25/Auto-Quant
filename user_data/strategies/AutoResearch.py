@@ -50,7 +50,7 @@ class AutoResearch(IStrategy):
         condition = (dataframe["close"] > dataframe["ema200"])
         condition &= dataframe["rsi"] < 40
         condition &= (dataframe["close"] < dataframe["bb_lower"] * 0.997)
-        condition &= dataframe["adx"] > 20
+        condition &= dataframe["adx"] > 19
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
