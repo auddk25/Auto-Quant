@@ -46,7 +46,7 @@ class FactorMeanRevCandidate(IStrategy):
     min_stablecoin_mcap_growth = 0.0
     stoch_rsi_period = 25
     stable_stoch_rsi_period = 20
-    stable_stoch_entry_threshold = 0.22
+    stable_stoch_entry_threshold = 0.18
 
     factor_columns = [
         "funding_rate",
