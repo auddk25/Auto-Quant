@@ -63,7 +63,6 @@ class StochMeanRev(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Exit when stoch_k > 0.80 or price reclaims the BB midline
-        exit_cond = (dataframe["stoch_k"] > 0.80) | (dataframe["close"] > dataframe["bb_middle"])
+        exit_cond = (dataframe["stoch_k"] > 0.80) & (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
