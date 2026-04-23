@@ -57,6 +57,6 @@ class FastRSIRev(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["rsi_fast"] > 50) | (dataframe["close"] > dataframe["bb_middle"])
+        exit_cond = (dataframe["rsi_fast"] > 55) | (dataframe["close"] > dataframe["bb_middle"])
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
