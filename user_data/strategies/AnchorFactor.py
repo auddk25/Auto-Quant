@@ -61,6 +61,7 @@ class AnchorFactor(IStrategy):
             24 * 7
         ).sum()
 
+        dataframe["mfi"] = ta.MFI(dataframe, timeperiod=14)
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
@@ -74,6 +75,7 @@ class AnchorFactor(IStrategy):
         base_condition &= dataframe["adx"] > 19
         base_condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
         base_condition &= dataframe["rsi"] < 40
+        base_condition &= dataframe["mfi"] < 35
 
         if self._uses_factor_gate(metadata):
             condition = base_condition.copy()
