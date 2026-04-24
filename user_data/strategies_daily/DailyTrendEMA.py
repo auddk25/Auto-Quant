@@ -50,7 +50,7 @@ class DailyTrendEMA(IStrategy):
 
     def custom_stoploss(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, after_fill: bool, **kwargs) -> float:
         if current_profit >= 0.30:
-            return -0.10
+            return -0.05
         return self.stoploss
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
