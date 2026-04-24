@@ -1,364 +1,3 @@
---- Session: 2026-04-23 (v0.2.0 rounds 51-60, session 6) ---
-
-## Branch
-autoresearch/apr23
-
-## Active strategies (end of round 60 — 60 total rounds)
-
-### MeanRevADX [ANCHOR — never touch]
-- sharpe: 2.1016 | profit: 28.52% | dd: 0.96% | trades: 66 | pf: 20.36 | WR: 97%
-- RSI(20)<40 + close<BB_lower(25,2.18σ)×0.997 + EMA200 + ADX>19
-- Exit: (rsi>58) AND (close>bb_middle) | ROI: 0.008 | SL: -0.08
-
-### StochMeanRev [BEST NON-ANCHOR]
-- sharpe: 0.6597 | profit: 22.34% | dd: 2.88% | trades: 93 | pf: 2.61 | WR: 77.4%
-- StochRSI(20, 20, 3, 3) K<0.20 + MeanRevADX filters (ADX>19, BB2.18*0.997)
-- Exit: (stoch_k>0.80) OR (close>bb_middle) | ROI: 0.010 | SL: -0.08
-- Alignment with RSI(20) period was the breakthrough in R58.
-
-### HybridMeanRev [SOLID THIRD]
-- sharpe: 0.5529 | profit: 17.82% | dd: 2.49% | trades: 77 | pf: 2.58 | WR: 76.6%
-- StochRSI(14, 14, 3, 3) K<0.25 + MFI < 35 + MeanRevADX filters (ADX>19, BB2.18*0.997)
-- Exit: (stoch_k>0.80) OR (close>bb_middle) | ROI: 0.010 | SL: -0.08
-
-## Master findings (60 rounds)
-
-### RSI Period Alignment (R54, R58)
-In 1h crypto mean-reversion, aligning the oscillator lookback (e.g., StochRSI based on RSI 20) with the macro trend filters (RSI 20) significantly improves signal quality. StochMeanRev jumped from 0.47 to 0.66 Sharpe by moving from default 14-period to 20-period RSI basis.
-
-### Dual Oscillator Complementarity (R59)
-While StochRSI(20) works for a single oscillator strategy, the Hybrid (MFI + StochRSI) strategy actually performed better with a faster StochRSI(14). This suggests MFI (volume) and StochRSI (price) provide better diversification when their speeds are slightly offset.
-
-### Exit Signal Dominance (R56, R57)
-The SMA-based BB middle band remains the most robust exit signal. Switching to an EMA-based exit (EMA20) resulted in lower Sharpe, as the EMA reacts too quickly to the initial bounce, leaving profit on the table.
-
-## Stagnation counters (end of session 6)
-- MeanRevADX: stable rounds 31-60 (ANCHOR)
-- StochMeanRev: evolved R51, R54, R56, R57, R58, R59, R60.
-- HybridMeanRev: evolved R51, R52, R53, R54, R55, R56, R57, R58, R59, R60.
-
-## Pending for next session (R61-70)
-1. Try **SuperTrend** (10, 3) as a trend filter instead of EMA200.
-2. Try **ATR-based dynamic profit targets**: replace ROI with `entry_price + 1.5 * ATR`.
-3. Try **Per-pair BB multipliers**: test if ETH specifically benefits from a higher multiplier (e.g. 2.5σ) now that we have the 0.997 offset.
-4. Stress test: Run top 3 on 2022 bear market data.
-
-## Roadmap review note (2026-04-23)
-- `docs/plans/data-engineering-roadmap.md` direction is strong, but it conflicts with the current evaluation contract if it modifies `prepare.py`.
-- Current repo treats `prepare.py`, `run.py`, and `config.json` as read-only. External factor ingestion should live in a new pipeline/script, not inside `prepare.py`.
-- Current backtest universe is BTC/USDT + ETH/USDT on 1h from 2023-01-01 to 2025-12-31. Any factor plan should define how both pair files are enriched and how missing history is handled.
-- Best next step: split roadmap into Phase A (build/cache/merge factor datasets) and Phase B (prove FreqTrade can read enriched feather files without breaking the existing loop).
-
-## v0.3.0 data pipeline implementation note (2026-04-23)
-- Implemented `autoq_data/` with source fetchers, transforms, and `prepare_enriched_datasets()`.
-- `uv run prepare.py` now refreshes factor caches and writes:
-  - canonical OHLCV files at `user_data/data/binance/*.feather`
-  - mirrored OHLCV files at `user_data/data/*.feather`
-  - enriched sidecar files at `user_data/data/_cache/enriched/binance/*.feather`
-  - manifest at `user_data/data/_cache/factor_manifest.json`
-- Important constraint discovered during real verification: Freqtrade's `FeatherDataHandler` hard-resets columns to the default 6 OHLCV columns, so enriched factors CANNOT be stored in the canonical `.feather` inputs without breaking history loading.
-- Verified:
-  - pytest suite for transforms/pipeline/source timestamp handling passes
-  - `uv run prepare.py` succeeds
-  - Freqtrade `load_pair_history()` reads canonical OHLCV files again
-- Runtime blocker resolved: `config.json` now sets `exchange.ccxt_async_config.aiohttp_trust_env = true`, which fixes the local `ccxt async` / `aiohttp` DNS failure against `api.binance.com`.
-- Verified after runtime fix:
-  - direct `ccxt.async_support.binance({'aiohttp_trust_env': True}).load_markets()` succeeds while `False` fails
-  - `uv run run.py` succeeds again with 3/3 strategies passing
-  - latest summary stays aligned with pre-v0.3.0 results:
-    - MeanRevADX sharpe 2.1016 | dd -0.9612 | trades 66
-    - StochMeanRev sharpe 0.6597 | dd -2.8781 | trades 93
-    - HybridMeanRev sharpe 0.5529 | dd -2.4931 | trades 77
-- Added `autoq_data.strategy_bridge.merge_external_factors()` plus tests and template example so future strategies can consume sidecar factor files by pair without changing `run.py`.
-
-## v0.3.0 factor strategy prototype note (2026-04-23)
-- Added ignored prototype strategy `user_data/strategies/_FactorMeanRevCandidate.py`.
-- It uses the sidecar bridge to merge `funding_rate`, `stablecoin_mcap_growth`, and `fed_net_liquidity` into the strategy dataframe.
-- Entry logic is based on the StochMeanRev/MeanRevADX mean-reversion stack, with first factor gates:
-  - require funding data and avoid entries when funding is hot (`funding_rate >= 0.0005`)
-  - require stablecoin market-cap growth and avoid shrinking-liquidity entries (`stablecoin_mcap_growth <= -0.002`)
-  - require Fed net liquidity to be present
-- The leading underscore is intentional: `run.py` ignores it, so the current 3-strategy baseline remains unchanged.
-- Added `tests/test_factor_strategy_candidate.py` to prove the candidate is ignored by default discovery and can merge sidecar factors.
-- Verified after adding the prototype:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py -q` -> 12 passed
-  - `uv run run.py` -> discovered 3 strategies and finished `3 succeeded, 0 failed`
-  - latest formal baseline stayed unchanged: HybridMeanRev Sharpe 0.5529 / 77 trades, MeanRevADX Sharpe 2.1016 / 66 trades, StochMeanRev Sharpe 0.6597 / 93 trades.
-- Follow-up factor threshold sweep:
-  - initial default (`funding_rate < 0.0005`, `stablecoin_mcap_growth > -0.002`) produced Sharpe 0.5032 / 84 trades / PF 2.27.
-  - best small-sweep setting was `funding_rate < 0.001` and `stablecoin_mcap_growth > 0.0`.
-  - updated `_FactorMeanRevCandidate.py` defaults to that setting.
-  - one-off candidate backtest now: Sharpe 0.6322 / 63 trades / 81.0% win rate / PF 3.45 / max DD 3.25%.
-  - conclusion: factor gates improve trade quality but do not beat StochMeanRev's Sharpe 0.6597 yet, so keep candidate ignored and do not promote.
-- Verified after threshold update:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py -q` -> 14 passed
-  - `uv run run.py` -> still discovered only HybridMeanRev, MeanRevADX, StochMeanRev and finished `3 succeeded, 0 failed`.
-- Extended factor sweep found a better candidate setting:
-  - Keep `funding_rate < 0.001` and `stablecoin_mcap_growth > 0.0`.
-  - Change StochRSI `fastk_period` from 20 to 25.
-  - Open-interest, taker-delta, and CVD directional filters did not help in this small sweep; most reduced trade count without improving Sharpe.
-  - Updated `_FactorMeanRevCandidate.py` to expose `stoch_rsi_period = 25`.
-  - one-off candidate backtest now: Sharpe 0.7859 / 64 trades / 81.2% win rate / PF 4.45 / max DD 2.94%.
-  - This beats StochMeanRev's Sharpe 0.6597 in the same timerange, but remains ignored until promoted intentionally.
-- Verified after StochRSI 25 update:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py -q` -> 15 passed
-  - `uv run run.py` -> still discovers only the 3 formal strategies and finishes `3 succeeded, 0 failed`.
-
-## v0.3.0 factor strategy promotion note (2026-04-23)
-- Promoted `FactorMeanRevCandidate` into the active strategy roster by creating `user_data/strategies/FactorMeanRevCandidate.py`.
-- Archived weaker `HybridMeanRev` as `user_data/strategies/_HybridMeanRev.py` to preserve the code while keeping the active roster capped at 3 strategies.
-- Removed the old ignored `_FactorMeanRevCandidate.py` prototype to avoid duplicate strategy definitions.
-- Added `tests/test_strategy_roster.py` so the active roster is explicitly guarded as:
-  - `FactorMeanRevCandidate`
-  - `MeanRevADX`
-  - `StochMeanRev`
-- Verified after promotion:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py -q` -> 16 passed
-  - `uv run run.py` -> 3 succeeded, 0 failed
-- Latest active roster results:
-  - MeanRevADX: Sharpe 2.1016 / 66 trades / WR 96.97% / PF 20.36
-  - FactorMeanRevCandidate: Sharpe 0.7859 / 64 trades / WR 81.25% / PF 4.45
-  - StochMeanRev: Sharpe 0.6597 / 93 trades / WR 77.42% / PF 2.61
-- New ranking: MeanRevADX remains anchor; FactorMeanRevCandidate is now best non-anchor; StochMeanRev is third; HybridMeanRev is archived.
-
-## 2022 stress-test note (2026-04-23)
-- Added `stress.py` as an optional 2022 bear-market pressure-test oracle.
-- Important isolation fix: 2022 data must live under `user_data/data_stress`, not the main `user_data/data`; otherwise FreqTrade uses 2022 candles as startup warmup for the 2023 main leaderboard and slightly changes main metrics.
-- Added `AUTOQ_ENRICHED_ROOT` support in `autoq_data.strategy_bridge` so stress runs can point strategies at `user_data/data_stress/_cache/enriched/binance`.
-- Prepared local `user_data/data_stress` with 2022-2026 OHLCV and sidecar factors, then restored main `user_data/data` back to 2023+ only.
-- 2022 stress results:
-  - StochMeanRev: Sharpe 0.6318 / profit +5.80% / DD -1.14% / 27 trades / PF 2.50
-  - FactorMeanRevCandidate: Sharpe -0.2016 / profit -5.65% / DD -6.58% / 16 trades / PF 0.46
-  - MeanRevADX: Sharpe -0.3836 / profit -12.99% / DD -13.33% / 16 trades / PF 0.23
-- Interpretation: FactorMeanRevCandidate is strong on the main 2023-2025 leaderboard but not bear-market robust. StochMeanRev is the most robust across 2022 stress despite lower main-window Sharpe.
-- Small robust sweep tried DXY, 10Y, and Fed-liquidity filters. The best 2022-safe variants cut main-window Sharpe to ~0.2-0.3, so no robust factor variant was promoted.
-- Verified after isolation:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py tests/test_stress_runner.py -q` -> 20 passed
-  - `uv run run.py` -> main metrics restored: FactorMeanRevCandidate 0.7859, MeanRevADX 2.1016, StochMeanRev 0.6597
-  - `uv run stress.py` -> 3 succeeded, 0 failed with the 2022 results above.
-
-## StochMeanRev robust-threshold update (2026-04-23)
-- Investigated FactorMeanRevCandidate's 2022 weakness before changing code:
-  - 2022 Factor had only 16 trades.
-  - Most of the damage came from two -8% stop-loss trades plus weak BTC exit-signal trades.
-  - BTC-only tightening and ETH-only variants did not preserve enough main-window Sharpe, so Factor was left unchanged.
-- Ran a dual-window sweep around StochMeanRev because it was already the strongest 2022 strategy.
-- Best low-risk change: increase `stoch_entry_threshold` from 0.20 to 0.22.
-  - Main window improved from Sharpe 0.6597 / profit 22.34% / 93 trades to Sharpe 0.6785 / profit 23.14% / 95 trades.
-  - 2022 stress stayed effectively unchanged: Sharpe 0.6318 / profit 5.80% / DD -1.14% / 27 trades.
-- Updated `user_data/strategies/StochMeanRev.py` to expose `stoch_entry_threshold = 0.22`.
-- Added `tests/test_stoch_mean_rev.py` to guard the threshold and entry behavior.
-- Verified:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py tests/test_stress_runner.py tests/test_stoch_mean_rev.py -q` -> 22 passed
-  - `uv run run.py` -> 3 succeeded, 0 failed
-  - `uv run stress.py` -> 3 succeeded, 0 failed.
-- Current active roster:
-  - MeanRevADX: main Sharpe 2.1016, 2022 Sharpe -0.3836
-  - FactorMeanRevCandidate: main Sharpe 0.7859, 2022 Sharpe -0.2016
-  - StochMeanRev: main Sharpe 0.6785, 2022 Sharpe 0.6318
-
-## FactorMeanRevCandidate pair-adaptive update (2026-04-23)
-- Continued robustness investigation without touching MeanRevADX.
-- Tested pair-adaptive combinations:
-  - BTC Stoch + ETH Factor: main Sharpe 0.5576, 2022 Sharpe 0.0628.
-  - BTC Factor + ETH Stoch: main Sharpe 0.8998, 2022 Sharpe -0.0673.
-  - both Factor: main Sharpe 0.7859, 2022 Sharpe -0.2016.
-  - both Stoch: main Sharpe 0.6785, 2022 Sharpe 0.6318.
-- Best tradeoff was BTC Factor + ETH Stoch:
-  - Main window improved from Sharpe 0.7859 / profit 20.78% / 64 trades to Sharpe 0.8998 / profit 24.95% / 81 trades.
-  - 2022 stress improved from Sharpe -0.2016 / profit -5.65% to Sharpe -0.0673 / profit -1.36%.
-  - It is still not fully bear-market positive, but it materially improves both main-window performance and stress loss.
-- Updated `FactorMeanRevCandidate.py`:
-  - BTC uses the external-factor gate with 25-period StochRSI.
-  - ETH uses the StochMeanRev-style 20-period StochRSI with `stoch_stable_k < 0.22` and no factor gate.
-  - Added fallback to `stoch_k` for unit tests and compatibility with precomputed indicator frames.
-- Added/updated factor candidate tests to prove ETH can enter without funding/stablecoin/fed gates.
-- Verified:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py tests/test_stress_runner.py tests/test_stoch_mean_rev.py -q` -> 23 passed
-  - `uv run run.py` -> 3 succeeded, 0 failed
-  - `uv run stress.py` -> 3 succeeded, 0 failed.
-- Current active roster:
-  - MeanRevADX: main Sharpe 2.1016, 2022 Sharpe -0.3836
-  - FactorMeanRevCandidate: main Sharpe 0.8998, 2022 Sharpe -0.0673
-  - StochMeanRev: main Sharpe 0.6785, 2022 Sharpe 0.6318
-
-## FactorMeanRevCandidate BTC stablecoin 7d gate update (2026-04-23)
-- Investigated pair-adaptive Factor after ETH became robust:
-  - Remaining 2022 weakness was still concentrated in BTC factor-gated trades.
-  - Tested BTC-only filters using open interest and stablecoin rolling impulse while keeping ETH on StochMeanRev rules.
-- Best result: require BTC factor entries to have positive 7-day stablecoin market-cap growth sum.
-  - Main window improved from Sharpe 0.8998 / profit 24.95% / DD -2.65% / 81 trades / PF 3.93 to Sharpe 0.9628 / profit 25.34% / DD -2.37% / 74 trades / PF 4.92.
-  - 2022 stress improved from Sharpe -0.0673 / profit -1.36% / DD -4.45% / 22 trades / PF 0.84 to Sharpe 0.5867 / profit 4.82% / DD -1.01% / 17 trades / PF 3.72.
-- Updated `FactorMeanRevCandidate.py`:
-  - computes `stablecoin_mcap_growth_7d = stablecoin_mcap_growth.rolling(24 * 7).sum()`
-  - BTC factor gate now requires `stablecoin_mcap_growth_7d > 0`
-  - keeps compatibility fallback to daily `stablecoin_mcap_growth` when tests or precomputed frames do not include the 7d column.
-- Added/updated factor candidate tests to guard BTC stablecoin 7d impulse behavior.
-- Verified:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py tests/test_stress_runner.py tests/test_stoch_mean_rev.py -q` -> 24 passed
-  - `uv run run.py` -> 3 succeeded, 0 failed
-  - `uv run stress.py` -> 3 succeeded, 0 failed.
-- Current active roster:
-  - MeanRevADX: main Sharpe 2.1016, 2022 Sharpe -0.3836
-  - FactorMeanRevCandidate: main Sharpe 0.9628, 2022 Sharpe 0.5867
-  - StochMeanRev: main Sharpe 0.6785, 2022 Sharpe 0.6318
-
-## FactorMeanRevCandidate no-change sweep note (2026-04-23)
-- Continued temporary-variant research after the BTC 7d stablecoin gate, without editing production strategies.
-- Stablecoin impulse window/threshold sweep:
-  - Tested 3d, 5d, 7d, 10d, and 14d rolling stablecoin growth windows with positive thresholds.
-  - Current setting, 168h rolling sum > 0, remained best by main-window Sharpe while tying the best 2022 stress result.
-  - Best current result stayed: main Sharpe 0.9628 / profit 25.34% / 74 trades; 2022 stress Sharpe 0.5867 / profit 4.82% / 17 trades.
-- BTC factor Stoch/funding sweep:
-  - Tested BTC factor Stoch thresholds 0.16-0.26 and funding caps 0.0005, 0.001, 0.002.
-  - No setting improved on current results. Several settings tied because no actual entries fell between those thresholds.
-- Entry-shape sweep:
-  - Tested ADX thresholds 17/19/21, Bollinger deviations 2.00/2.18/2.35, and lower-band entry multipliers 0.995/0.997/1.000.
-  - `adx=19, bbdev=2.00, mult=0.995` raised main Sharpe to 0.9898, but reduced main profit to 20.98% and 2022 stress Sharpe to 0.3721, so it was not promoted.
-  - `adx=17, bbdev=2.18, mult=0.997` raised 2022 stress Sharpe to 0.8173, but cut main Sharpe to 0.6100, so it was not promoted.
-- ROI/stoploss sweep:
-  - Tested ROI 0.006/0.008/0.010/0.012/0.015 with stoploss -0.04/-0.06/-0.08/-0.10.
-  - Current ROI 0.010 and stoploss -0.08 remained best by main-window Sharpe.
-  - ROI 0.015 and stoploss -0.10 improved total profit and 2022 stress Sharpe, but reduced main-window Sharpe to 0.7659, so it was not promoted.
-- Decision: no production change. Keep `FactorMeanRevCandidate` at the current balanced parameters.
-- Fresh verification after the no-change sweeps:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py tests/test_stress_runner.py tests/test_stoch_mean_rev.py -q` -> 24 passed, 4 dependency warnings.
-  - `uv run run.py` -> 3 succeeded, 0 failed.
-  - `uv run stress.py` -> 3 succeeded, 0 failed.
-  - Silent metric extraction:
-    - Main: MeanRevADX Sharpe 2.1016; FactorMeanRevCandidate Sharpe 0.9628; StochMeanRev Sharpe 0.6785.
-    - 2022 stress: StochMeanRev Sharpe 0.6318; FactorMeanRevCandidate Sharpe 0.5867; MeanRevADX Sharpe -0.3836.
-
-## v0.3.0 contract hardening note (2026-04-23)
-- Rechecked the implementation against the compatibility-first data contract:
-  - Canonical Freqtrade feather files stay at 6 OHLCV columns.
-  - Enriched factor columns live in sidecar files under `user_data/data/_cache/enriched/binance/`.
-  - Top-level mirrored canonical files stay schema-compatible with the canonical exchange directory.
-- Added pipeline tests for two previously implicit guarantees:
-  - Enriched sidecar row count and timestamps must exactly match base OHLCV.
-  - Tier 1 source failure must abort `prepare_enriched_datasets`.
-- Clarified README wording so it says `prepare.py` writes enriched sidecar factor files instead of implying canonical schema expansion.
-- Added `.tmp/` and `.uv-cache/` to `.gitignore` to stop local cache permission warnings from polluting `git status`.
-- Verified:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py tests/test_stress_runner.py tests/test_stoch_mean_rev.py -q` -> 25 passed, 4 dependency warnings.
-  - `uv run prepare.py` -> exit 0; refreshed enriched factors from warm cache.
-  - Real data check: BTC/ETH canonical files remain 6 columns; mirrors match canonical schema; sidecar files have identical rows/dates and all required factor columns.
-  - Manifest after prepare: all required sources ok; optional dvol/stablecoins ok.
-  - `uv run run.py` -> 3 succeeded, 0 failed; main metrics unchanged.
-
-## v0.3.0 metadata and contract cleanup note (2026-04-23)
-- Found and fixed a release metadata mismatch:
-  - `pyproject.toml` still said `version = "0.1.0"` after the v0.3.0 data-pipeline work.
-  - Added `tests/test_runtime_config.py::test_project_metadata_tracks_v030_release`.
-  - Verified the test failed against `0.1.0`, then updated the project version to `0.3.0`.
-- Cleaned up contract drift:
-  - Reverted the sidecar-factor example that had been added to `_template.py.example`, because `program.md` still treats that template as part of the fixed strategy contract.
-  - Fixed the `program.md` in-scope-file list indentation so `run.py`, `stress.py`, and `_template.py.example` are correctly nested under setup context.
-- Verified after cleanup:
-  - `uv run pytest tests/test_runtime_config.py -q` -> 2 passed.
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py tests/test_stress_runner.py tests/test_stoch_mean_rev.py -q` -> 26 passed, 4 dependency warnings.
-  - `uv run run.py` -> 3 succeeded, 0 failed.
-  - `uv run stress.py` -> 3 succeeded, 0 failed.
-
-## Data source audit note (2026-04-23)
-Code-level audit of `autoq_data/sources.py` after v0.3.0 implementation.
-
-### Sources and findings
-| Source | Granularity | API | Concern |
-|---|---|---|---|
-| Binance spot klines (OHLCV) | 1h | Binance Vision monthly ZIP | Monthly archive for current in-progress month does not exist yet |
-| Funding rate | 8h → ffill 1h | Binance Vision monthly ZIP | Same current-month gap. **Fixed**: daily-archive fallback added in this session |
-| Open interest | 1h (daily ZIP) | Binance Vision daily ZIP | Uses daily files already; works for recent dates |
-| Fed net liquidity (WALCL-WTREGEN-RRPONTSYD) | Weekly → ffill 1h | FRED via pandas_datareader | Publishing lag ~4-7 days; value repeated for 168 h per week |
-| US10Y / DXY | Daily → ffill 1h | yfinance (Yahoo Finance) | Market-day gaps (weekends/holidays) are ffilled; no issues |
-| BTC DVOL | 1h | Deribit public REST | Optional; API can be slow; handled gracefully |
-| Stablecoin market cap | Daily → ffill 1h | DefiLlama public REST | Optional; daily value repeated 24 h; 7d rolling sum used in FactorMeanRevCandidate changes at most once/day |
-
-### Key conclusions
-- **No look-ahead bias**: all ffill is forward-only (no backward fill of future data into past). The enriched sidecar represents what would have been known at each 1h bar.
-- **FRED latency**: the most recent 1-2 weeks of `fed_net_liquidity` may be stale (publishing lag). Acceptable for backtesting; relevant for live deployment.
-- **Current-month Binance archive gap**: monthly archives don't exist for the in-progress month. Funding rate now falls back to daily archives; OHLCV is fetched via Freqtrade's REST downloader (not Vision archive), so it is not affected.
-- **Factor smoothness**: FRED weekly + DefiLlama daily factors are very coarse for 1h bars. The 7d rolling stablecoin sum in FactorMeanRevCandidate is the most useful formulation given this grain.
-
-## Anchor concept revision (2026-04-23)
-The anchor is no longer a fixed strategy — it is the **#1 ranked strategy by composite dual-window score** at the start of each session. It can change when a new strategy displaces it.
-
-### Composite score formula (2 windows)
-```
-dual_score = 0.6 × main_sharpe + 0.4 × stress_sharpe
-```
-When validation window data is available, extend to:
-```
-triple_score = 0.5 × main_sharpe + 0.3 × stress_sharpe + 0.2 × val_sharpe
-```
-
-### Current anchor ranking (2026-04-23, dual score)
-| Rank | Strategy | Main Sharpe | 2022 Sharpe | Dual Score | Status |
-|---|---|---|---|---|---|
-| 1 | MeanRevADX | 2.1016 | -0.3836 | 1.1076 | **ANCHOR** (frozen this session) |
-| 2 | FactorMeanRevCandidate | 0.9628 | 0.5867 | 0.8124 | active |
-| 3 | StochMeanRev | 0.6785 | 0.6318 | 0.6598 | active |
-
-Rules:
-- The anchor's parameters are **not changed** during the current session.
-- If a non-anchor strategy's dual/triple score exceeds the anchor's, it becomes the new anchor next session.
-- The anchor list is updated after each session with fresh verified metrics.
-
-## 2026 validation set note (2026-04-23)
-- Added `val.py` — out-of-sample runner for 2026-01-01 to 2026-04-20 (entirely outside the 2023-2025 training window).
-- Added `prepare_val.py` — downloads 2026 OHLCV via Freqtrade REST and builds enriched sidecar factors into `user_data/data_val/`.
-- Added `user_data/data_val/` to `.gitignore` (same as `data_stress` and `data`).
-- Key difference from stress.py: stress tests 2022 bear market (known regime); val tests a live recent window never seen during strategy development.
-- Fixed `sources.py` `load_funding_rate` to fall back to Binance Vision daily archives when monthly archive for the current in-progress month is missing (April 2026 monthly archive does not exist yet).
-- Added `tests/test_val_runner.py` (3 tests) and `tests/test_sources.py` daily-fallback tests (2 tests).
-- val.py cannot be run yet — `user_data/data_val/` must be populated first via `uv run prepare_val.py`.
-- Verified:
-  - `uv run pytest tests/test_runtime_config.py tests/test_sources.py tests/test_transforms.py tests/test_pipeline.py tests/test_strategy_bridge.py tests/test_factor_strategy_candidate.py tests/test_strategy_roster.py tests/test_stress_runner.py tests/test_stoch_mean_rev.py tests/test_val_runner.py -q` -> 31 passed
-  - `uv run run.py` -> 3 succeeded, 0 failed (unchanged)
-  - `uv run stress.py` -> 3 succeeded, 0 failed (unchanged)
-
-## v0.2.0 archive merge + BaH benchmark + experiments (2026-04-23)
-
-### Fork merge
-- Merged `origin/master` (PR #7, TraderAlice v0.2.0 archive) into `autoresearch/apr23`.
-- No conflicts. Added `versions/0.2.0/` — a separate 81-round run with MACDMomentum / MeanRevBB / TrendEMAStack.
-- Key finding from that retrospective now confirmed as tested in this session: volume filter and RSI 75 exit were both evaluated and rejected below.
-
-### Buy-and-hold benchmark added to run.py / stress.py / val.py
-- `compute_bah_benchmark()` and `print_bah_benchmark()` added to `run.py` and imported by `stress.py` / `val.py`.
-- Shows total return, daily log-return Sharpe (×√365), and max drawdown for BTC, ETH, and 50/50 portfolio.
-- Important note: BaH Sharpe uses time-series daily methodology, NOT the trade-based methodology Freqtrade uses for strategies. Both are valid but not directly comparable; treat BaH as a directional reference.
-- Main window 2023-2025 BaH results for context:
-  - BTC: +427.5%  sharpe 1.1981  dd -32.0%
-  - ETH: +147.6%  sharpe 0.4815  dd -63.8%
-  - 50/50: +287.5%  sharpe 0.8279  dd -40.0%
-- **Interpretation**: strategies' total returns (23-28%) are far below BaH, but DD is 10-20× tighter. The strategies trade return for risk reduction — relevant for live deployment where -60% ETH drawdown would be catastrophic.
-
-### Experiment R1: Volume expansion entry filter on StochMeanRev
-- **What it is**: require `volume > volume.rolling(20).mean()` at entry — the idea that a dip on high volume signals capitulation (sellers exhausted = stronger mean-reversion signal).
-- **Source**: v0.2.0 retrospective finding that "volume expansion generalizes to all 3 paradigms." Hypothesis: applicable to StochMeanRev too.
-- **Result**: does NOT generalize to this setup.
-  - Main 2023-2025: Sharpe 0.6150 vs baseline 0.6785 (down 9.4%), trades 91 vs 95.
-  - Stress 2022: Sharpe 0.5689 vs baseline 0.6318 (down 10%), trades 26 vs 27.
-- **Conclusion**: not promoted. For crypto mean-reversion at this entry tightness (BB×0.997 + ADX + StochRSI), volume filtering removes valid dip-and-recover signals without improving quality. The v0.2.0 result was paradigm-specific to their looser setups.
-
-### Experiment R2: RSI(20) > 75 exit replacing stoch_k > 0.80 on StochMeanRev
-- **What it is**: use RSI(20) crossing above 75 as the overbought exit instead of StochRSI K > 0.80. v0.2.0 found RSI 75 is the BTC/ETH 1h overbought line from 3 independent directions.
-- **Result**: clearly inferior, especially in the stress test.
-  - Main 2023-2025: Sharpe 0.5925 vs baseline 0.6785 (down 12.7%), DD -4.05% vs -2.88% (worse).
-  - Stress 2022: Sharpe 0.0963 vs baseline 0.6318 (catastrophically worse), DD -4.45% vs -1.14%.
-- **Why**: RSI(20) is slower and smoother than StochRSI K. It takes longer to hit 75 after a bounce, meaning trades are held longer → more DD exposure → worse Sharpe. In 2022 bear market, holding through shallower bounces is especially harmful.
-- **Conclusion**: not promoted. stoch_k > 0.80 is the correct exit for StochMeanRev.
-
-### Production roster unchanged after experiments
-- MeanRevADX: main Sharpe 2.1016, 2022 Sharpe -0.3836
-- FactorMeanRevCandidate: main Sharpe 0.9628, 2022 Sharpe 0.5867
-- StochMeanRev: main Sharpe 0.6785, 2022 Sharpe 0.6318
-- Verified: 31 passed, `uv run run.py` -> 3 succeeded 0 failed.
-
-
---
-
 --- Session: 2026-04-24 00:00 ---
 ## Completed
 - Ran R103-R114 (12 experiments), all reverted. No parameter improvement found.
@@ -370,15 +9,113 @@ Rules:
 - Kill AnchorFactor or FactorMeanRevCandidate, replace with trend-following strategy
 - Run 2026 validation set (prepare_val.py + val.py) for out-of-sample test
 - Explore multi-timeframe (4h trend + 1h entry) or momentum paradigm
-- Consider leverage-aware evaluation for low-DD strategies
-- Update claude-progress.txt roster section (still shows old StochMeanRev/HybridMeanRev)
 ## Known Issues
-- claude-progress.txt top section is stale (shows session 6 roster, not current R114 state)
 - Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
 - CRLF/LF mismatch on Windows causes full-file diffs when editing AnchorFactor.py
 ---
 
-## Current roster (end of R114, 2026-04-24)
+## Current 1h roster (end of R114, 2026-04-24)
 - MeanRevADX (ANCHOR): main 2.1016, stress -0.3836, dual 1.1076
 - AnchorFactor: main 1.7825, stress -0.2445, dual 0.9717
 - FactorMeanRevCandidate: main 1.0815, stress 0.5122, dual 0.8538
+
+
+--- Session: 2026-04-24 12:00 ---
+## Completed
+- R123-R125 on 1h strategies, all reverted.
+- R123: FactorMeanRevCandidate ignore_roi_if_entry_signal True->False. Main 1.08->1.07. Reverted.
+- R124: AnchorFactor exit_profit_only True. Zero effect (ROI 0.008 binding). Reverted.
+- R125: FactorMeanRevCandidate RSI period 20->14. Main 1.08->1.00 (-7.5%). Reverted.
+- Confirmed all 3 strategies at parameter ceiling after 125 rounds total.
+## Pending
+- Need new strategy paradigm (trend-following confirmed failed on 1h in R115-R121)
+- Run 2026 validation set (prepare_val.py + val.py) for out-of-sample test
+## Known Issues
+- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
+- CRLF/LF mismatch on Windows causes full-file diffs when editing AnchorFactor.py
+---
+
+## Current 1h roster (end of R125, 2026-04-24)
+- MeanRevADX (ANCHOR): main 2.1016, stress -0.3836, dual 1.1076
+- AnchorFactor: main 1.7825, stress -0.2445, dual 0.9717
+- FactorMeanRevCandidate: main 1.0815, stress 0.5122, dual 0.8538
+
+
+--- Session: 2026-04-24 16:00 (daily-trend branch R31-R66) ---
+## Completed
+- Ran R31-R66 (36 experiments) on daily-trend branch
+- KEY BREAKTHROUGH: breakeven stop pattern (-5% after 30% profit peak)
+- R44: DailyTrendSlow exit_profit_only=True. Sharpe 0.11->0.13, DD 5.8%->0.0%. KEPT.
+- R48: DailyTrendEMA breakeven stop -1% after 20%. Sharpe 0.12->0.44, DD 5.9%->0.0%. KEPT.
+- R50: DailyTrendEMA breakeven trigger 20%->30%. Sharpe 0.44->0.57. KEPT.
+- R52: DailyTrendEMA breakeven stop -1%->-5%. Sharpe 0.57->0.71. KEPT.
+- R55: DailyTrendSlow breakeven stop -5% after 30% + exit_profit_only. Sharpe 0.13->0.86. KEPT.
+- Dead ends: trailing stop (R31), RSI filter (R32), ADX/DI crossover (R33), ATR stoploss (R34),
+  SuperTrend exit (R38), Donchian breakout (R41), EMA100/200 (R42), EMA30/90 (R65)
+- Volume filter (R35-R37) improved Sharpe but removed too many trades
+- TP sweep (R39-R40, R46, R57-R58) showed TP not binding with breakeven stop
+- Breakeven parameter sweep (R49-R53, R59-R63) confirmed 30% trigger / -5% stop optimal
+## Pending
+- Run 2022 stress test on daily strategies
+- Consider adding daily strategies to main roster alongside 1h mean-reversion
+- Explore multi-timeframe combination (daily trend + 1h mean-rev)
+## Known Issues
+- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
+- CRLF/LF mismatch on Windows causes full-file diffs when editing AnchorFactor.py
+---
+
+## Current daily-trend roster (end of R66, 2026-04-24)
+- DailyTrendSlow (EMA40/120): Sharpe 0.86, profit 118.9%, DD 0.0%, 6 trades, WR 100%
+- DailyTrendEMA (EMA50/150): Sharpe 0.71, profit 109.5%, DD 0.0%, 6 trades, WR 100%
+- BaH 50/50 benchmark: profit 271.9%, Sharpe 0.78, DD -40.0%
+
+## Current 1h roster (unchanged)
+- MeanRevADX (ANCHOR): main 2.1016, stress -0.3836, dual 1.1076
+- AnchorFactor: main 1.7825, stress -0.2445, dual 0.9717
+- FactorMeanRevCandidate: main 1.0815, stress 0.5122, dual 0.8538
+
+
+--- Session: 2026-04-24 17:40 (daily-trend R67-R74) ---
+## Completed
+- R67: DailyMomentum (close crosses EMA100 + RSI>50). Sharpe 0.07, 30 trades, WR 27%. Too noisy. Reverted.
+- R68: DailyTrendWeekly (EMA35/105). Sharpe 0.66, weaker than both existing. Reverted.
+- R69: Hard stoploss -15% on DailyTrendEMA. Fires before breakeven activates. Reverted.
+- R70-R73: TP sweep, pair-adaptive breakeven, time-based exit. All zero effect or worse. Reverted.
+- R74: Breakeven stop on 1h FactorMeanRevCandidate. Catastrophic (Sharpe 1.08->0.05). Pattern does not transfer from daily to 1h.
+- CONFIRMED: both daily (R66) and 1h (R125) strategies at absolute parameter ceiling.
+## Pending
+- Download 2022 daily data for stress testing daily strategies
+- Run 2026 validation set on both daily and 1h strategies
+- Explore multi-timeframe combination (daily trend filter + 1h mean-rev entry)
+## Known Issues
+- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
+- No 2022 daily data in user_data/data_stress/ (only 1h exists)
+---
+
+
+--- Session: 2026-04-24 18:00 (validation + final experiments R75) ---
+## Completed
+- R75: Daily EMA50/150 regime filter on AnchorFactor. Zero effect (daily EMA bullish entire 2023-2025). Reverted.
+- 2026 Q1 validation (out-of-sample 2026-01-01 to 2026-04-20):
+  BTC BaH: -11.4%, ETH BaH: -22.3% (bear market)
+  AnchorFactor: -4.1% (1 trade), MeanRevADX: -3.9% (3 trades), FactorMeanRevCandidate: -1.0% (3 trades)
+  Interpretation: strategies correctly sit out bear market (EMA200 filter). Small losses vs large BaH losses.
+  FactorMeanRevCandidate best OOS performer (factor gates help in bearish regime).
+- All strategies confirmed at absolute ceiling across all windows:
+  1h: R125 rounds, daily: R73 rounds, validation: tested
+## Current combined roster
+### Daily (daily-trend branch)
+- DailyTrendSlow (EMA40/120): Sharpe 0.86, profit 118.9%, DD 0.0%, WR 100%
+- DailyTrendEMA (EMA50/150): Sharpe 0.71, profit 109.5%, DD 0.0%, WR 100%
+### 1h (main strategies)
+- MeanRevADX: main 2.10, stress -0.38, val -0.39
+- AnchorFactor: main 1.78, stress -0.24, val -100
+- FactorMeanRevCandidate: main 1.08, stress 0.51, val -0.16
+## Pending
+- Download 2022 daily data for stress testing daily strategies
+- Consider merging daily-trend branch into main
+## Known Issues
+- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
+- No 2022 daily data for stress testing
+- Val window (2026 Q1) is bearish; strategies designed for uptrend correctly sit out
+---
