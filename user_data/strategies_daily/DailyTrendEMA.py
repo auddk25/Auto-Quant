@@ -49,8 +49,7 @@ class DailyTrendEMA(IStrategy):
         return dataframe
 
     def custom_stoploss(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, after_fill: bool, **kwargs) -> float:
-        threshold = 0.25 if "BTC" in pair else 0.35
-        if current_profit >= threshold:
+        if current_profit >= 0.30:
             return -0.05
         return self.stoploss
 
