@@ -2,9 +2,8 @@
 MtfTrend01 -- Daily EMA trend filter + 4h BB reversion entry
 
 Paradigm: trend-following with mean-reversion entry
-Hypothesis: Entering long on 4h BB lower touch when daily trend is bullish
-            (close > EMA50) captures dips within uptrends. Exit on daily
-            EMA death cross (EMA40 < EMA120) or 4h RSI overbought.
+Hypothesis: Tighter stoploss (-8%), breakeven stop after +30% peak,
+            and stricter RSI<30 entry reduce drawdown while keeping winners.
 Parent: root
 Created: R1
 Status: active
@@ -13,6 +12,7 @@ Uses MTF: yes (1d trend filter, 4h entry signal)
 
 from pandas import DataFrame
 import talib.abstract as ta
+import numpy as np
 
 from freqtrade.strategy import IStrategy, informative
 
@@ -24,7 +24,7 @@ class MtfTrend01(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 100}
-    stoploss = -0.15
+    stoploss = -0.08
 
     trailing_stop = False
     process_only_new_candles = True
@@ -49,18 +49,21 @@ class MtfTrend01(IStrategy):
         dataframe["bb_lower"] = bb["lowerband"]
         dataframe["bb_upper"] = bb["upperband"]
         dataframe["bb_mid"] = bb["middleband"]
+        dataframe["bb_width"] = (bb["upperband"] - bb["lowerband"]) / bb["middleband"]
         return dataframe
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe["enter_long"] = 0
         dataframe.loc[
             (
                 (dataframe["close_1d"] > dataframe["ema50_1d"])
                 & (dataframe["ema40_1d"] > dataframe["ema120_1d"])
                 & (dataframe["close"] <= dataframe["bb_lower_4h"])
-                & (dataframe["rsi_4h"] < 40)
+                & (dataframe["rsi_4h"] < 30)
+                & (dataframe["bb_width_4h"] > 0.04)
                 & (dataframe["volume"] > 0)
             ),
             "enter_long",
@@ -68,6 +71,7 @@ class MtfTrend01(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe["exit_long"] = 0
         dataframe.loc[
             (
                 (dataframe["ema40_1d"] < dataframe["ema120_1d"])
@@ -76,3 +80,9 @@ class MtfTrend01(IStrategy):
             "exit_long",
         ] = 1
         return dataframe
+
+    def custom_stoploss(self, pair: str, trade, current_time, current_rate,
+                        current_profit, **kwargs) -> float:
+        if current_profit >= 0.30:
+            return -0.05
+        return self.stoploss
