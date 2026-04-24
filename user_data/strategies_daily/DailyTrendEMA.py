@@ -22,6 +22,7 @@ class DailyTrendEMA(IStrategy):
     stoploss = -0.99
 
     trailing_stop = False
+    use_custom_stoploss = True
     process_only_new_candles = True
 
     use_exit_signal = True
@@ -46,6 +47,11 @@ class DailyTrendEMA(IStrategy):
         cross_down = (dataframe["ema50"] < dataframe["ema150"]) & (dataframe["ema50"].shift(1) >= dataframe["ema150"].shift(1))
         dataframe.loc[cross_down, "exit_long"] = 1
         return dataframe
+
+    def custom_stoploss(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, after_fill: bool, **kwargs) -> float:
+        if current_profit >= 0.20:
+            return -0.01
+        return self.stoploss
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
         if current_profit >= self.tp1_profit:
