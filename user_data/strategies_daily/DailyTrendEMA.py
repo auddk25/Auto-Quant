@@ -35,10 +35,12 @@ class DailyTrendEMA(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["ema150"] = ta.EMA(dataframe, timeperiod=150)
+        dataframe["vol_sma20"] = dataframe["volume"].rolling(20).mean()
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         cross_up = (dataframe["ema50"] > dataframe["ema150"]) & (dataframe["ema50"].shift(1) <= dataframe["ema150"].shift(1))
+        cross_up &= dataframe["volume"] > dataframe["vol_sma20"]
         dataframe.loc[cross_up, "enter_long"] = 1
         return dataframe
 
