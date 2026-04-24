@@ -1,5 +1,5 @@
 """
-DailyTrendEMA -- Daily EMA crossover with EMA200 trend filter
+DailyTrendEMA -- Daily EMA crossover trend-following strategy
 """
 
 from typing import Optional
@@ -28,21 +28,18 @@ class DailyTrendEMA(IStrategy):
     exit_profit_only = False
     ignore_roi_if_entry_signal = True
 
-    startup_candle_count: int = 200
+    startup_candle_count: int = 150
 
     tp1_profit = 0.60
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["ema150"] = ta.EMA(dataframe, timeperiod=150)
-        dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         cross_up = (dataframe["ema50"] > dataframe["ema150"]) & (dataframe["ema50"].shift(1) <= dataframe["ema150"].shift(1))
-        # Only enter when price is above EMA200 (long-term uptrend)
-        condition = cross_up & (dataframe["close"] > dataframe["ema200"])
-        dataframe.loc[condition, "enter_long"] = 1
+        dataframe.loc[cross_up, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
