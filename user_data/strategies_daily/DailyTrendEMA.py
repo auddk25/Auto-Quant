@@ -1,5 +1,5 @@
 """
-DailyTrendEMA -- Daily MACD crossover trend-following strategy
+DailyTrendEMA -- Daily EMA crossover trend-following strategy
 """
 
 from typing import Optional
@@ -33,21 +33,17 @@ class DailyTrendEMA(IStrategy):
     tp1_profit = 0.60
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        macd = ta.MACD(dataframe, fastperiod=50, slowperiod=150, signalperiod=30)
-        dataframe["macd"] = macd["macd"]
-        dataframe["macdsignal"] = macd["macdsignal"]
-        dataframe["macdhist"] = macd["macdhist"]
+        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
+        dataframe["ema150"] = ta.EMA(dataframe, timeperiod=150)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # MACD crosses above signal line
-        cross_up = (dataframe["macd"] > dataframe["macdsignal"]) & (dataframe["macd"].shift(1) <= dataframe["macdsignal"].shift(1))
+        cross_up = (dataframe["ema50"] > dataframe["ema150"]) & (dataframe["ema50"].shift(1) <= dataframe["ema150"].shift(1))
         dataframe.loc[cross_up, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # MACD crosses below signal line
-        cross_down = (dataframe["macd"] < dataframe["macdsignal"]) & (dataframe["macd"].shift(1) >= dataframe["macdsignal"].shift(1))
+        cross_down = (dataframe["ema50"] < dataframe["ema150"]) & (dataframe["ema50"].shift(1) >= dataframe["ema150"].shift(1))
         dataframe.loc[cross_down, "exit_long"] = 1
         return dataframe
 
