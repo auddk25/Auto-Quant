@@ -7,7 +7,7 @@ Hypothesis: CVD buyer confirmation for BTC only; ETH without CVD (CVD hurts ETH)
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
 Parent: MtfTrend04 R13 (fork)
-Created: R14, evolved R15
+Created: R14, evolved R15-R16
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -97,7 +97,7 @@ class MtfTrend05(IStrategy):
         volume_cond = dataframe["volume"] > 0
 
         if is_btc:
-            rsi_cond = (dataframe["rsi_4h"] > 40) & (dataframe["rsi_4h"] < 70)
+            rsi_cond = (dataframe["rsi_4h"] > 35) & (dataframe["rsi_4h"] < 75)
             crossover = dataframe["ema12_prev_4h"] <= dataframe["ema26_prev_4h"]
             cvd_cond = dataframe["cvd_24h"] > 0
             entry = trend_cond & momentum_cond & crossover & macro_cond & rsi_cond & cvd_cond & volume_cond
