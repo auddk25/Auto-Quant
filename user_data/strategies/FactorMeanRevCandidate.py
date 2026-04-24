@@ -34,6 +34,7 @@ class FactorMeanRevCandidate(IStrategy):
     stoploss = -0.08
 
     trailing_stop = False
+    use_custom_stoploss = True
     process_only_new_candles = True
 
     use_exit_signal = True
@@ -125,6 +126,11 @@ class FactorMeanRevCandidate(IStrategy):
         )
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
+
+    def custom_stoploss(self, pair, trade, current_time, current_rate, current_profit, after_fill, **kwargs):
+        if "ETH" in pair:
+            return -0.04
+        return self.stoploss
 
     def _uses_factor_gate(self, metadata: dict) -> bool:
         return "BTC" in metadata.get("pair", "")
