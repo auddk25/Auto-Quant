@@ -34,8 +34,8 @@ class DailyTrendEMA(IStrategy):
     tp1_profit = 0.60
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
-        dataframe["ema150"] = ta.EMA(dataframe, timeperiod=150)
+        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=30)
+        dataframe["ema150"] = ta.EMA(dataframe, timeperiod=90)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
