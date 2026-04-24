@@ -35,11 +35,14 @@ class DailyTrendEMA(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
         dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
+        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         cross_up = (dataframe["ema20"] > dataframe["ema50"]) & (dataframe["ema20"].shift(1) <= dataframe["ema50"].shift(1))
-        dataframe.loc[cross_up, "enter_long"] = 1
+        condition = cross_up & (dataframe["adx"] > 15)
+        dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
