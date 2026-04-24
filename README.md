@@ -36,14 +36,17 @@ Four things that matter:
 - **`config.json`** — FreqTrade config, fixed. Pairs, timeframe, fees, dry-run
   wallet, timerange. The agent does not touch this.
 - **`prepare.py`** — one-time data download from Binance via FreqTrade's Python
-  API. The agent does not touch this.
+  API. Downloads 1h, 4h, and 1d OHLCV for both pairs (v0.3.0+ uses the extra
+  timeframes via the `@informative` decorator). The agent does not touch this.
 - **`run.py`** — in-process **batch backtest**. Discovers every `.py` under
   `user_data/strategies/` (skipping files prefixed `_`), runs FreqTrade's
   `Backtesting` for each, and prints one `---` summary block per strategy.
   The agent does not touch this.
 - **`user_data/strategies/`** — **the directory the agent owns**. Each `.py`
   is one strategy; up to 3 active at a time. Agent creates / evolves / forks
-  / kills strategies here. `_template.py.example` is the skeleton reference.
+  / kills strategies here. Strategies evaluate on 1h base but can opt into
+  4h and 1d context via FreqTrade's `@informative` decorator (see
+  `_template.py.example` for the pattern).
 
 Plus:
 
@@ -56,10 +59,15 @@ Plus:
 - **`analysis.ipynb`** — post-hoc read: per-strategy trajectories, cap
   utilization, event distribution, note word frequency.
 
-*(v0.1.0 used a single `AutoResearch.py` file that the agent mutated in place.
-That mode anchored the agent on one paradigm for all 99 rounds. v0.2.0
-switched to multi-strategy; v0.1.0 is archived under [`versions/0.1.0/`](versions/0.1.0/)
-with a full [retrospective](versions/0.1.0/retrospective.md).)*
+*Version history*:
+- **v0.1.0** ([archive](versions/0.1.0/)): single-file mutation. Anchored
+  on one paradigm for all 99 rounds. Headline Sharpe 1.44 was mostly
+  oracle gaming (true-edge 0.19). See [retrospective](versions/0.1.0/retrospective.md).
+- **v0.2.0** ([archive](versions/0.2.0/)): multi-strategy (up to 3 slots).
+  5 paradigms tested / 3 kept / 0 Goodhart attempts. Peak clean Sharpe
+  0.67 (~3.5× better than v0.1.0's true-edge). See [retrospective](versions/0.2.0/retrospective.md).
+- **v0.3.0** (current): multi-strategy + multi-timeframe. Adds 4h + 1d
+  informative data on top of v0.2.0's architecture. In-flight.
 
 ## Requirements
 

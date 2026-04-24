@@ -1,12 +1,15 @@
-# Auto-Quant v0.2.0 — multi-strategy autonomous research
+# Auto-Quant v0.3.0 — multi-strategy + multi-timeframe autonomous research
 
 This is an experiment to have the LLM do its own quantitative research across
-**multiple parallel strategies**, not just iterate on one.
+**multiple parallel strategies** that can combine signals across **multiple
+timeframes** (1h base + 4h + 1d).
 
-The core bet of v0.2.0: since backtests are cheap and single-strategy iteration
-tends to anchor on a single paradigm (see `versions/0.1.0/retrospective.md`),
-maintaining up to 3 strategies simultaneously should resist anchoring and
-produce a richer picture of what genuinely works on this asset pair.
+The core bet of v0.2.0 was multi-strategy: maintaining up to 3 strategies in
+parallel resisted single-paradigm anchoring. That worked — see
+`versions/0.2.0/retrospective.md`. v0.3.0 adds multi-timeframe support on
+top of that foundation: the hypothesis is that v0.2.0's peak Sharpe of 0.67
+was constrained by 1h-only inputs, and letting strategies use 4h or 1d
+context should unlock higher-quality signals.
 
 ## Setup
 
@@ -22,12 +25,17 @@ To set up a new experiment, work with the user to:
    - `run.py` — the batch backtest oracle. Do not modify.
    - `user_data/strategies/_template.py.example` — skeleton for new strategies.
      **Note:** the folder may also contain `__pycache__`; ignore it.
-   - `versions/0.1.0/retrospective.md` — optional but valuable context on
-     what the previous run discovered and what went wrong with single-file
-     iteration.
-4. **Verify data exists**: Check that `user_data/data/BTC_USDT-1h.feather` and
-   `user_data/data/ETH_USDT-1h.feather` exist. If not, tell the user to run
-   `uv run prepare.py`.
+   - `versions/0.1.0/retrospective.md` and `versions/0.2.0/retrospective.md`
+     — previous runs' findings. Both are valuable: v0.1.0 documents the
+     single-paradigm anchoring failure mode + 3 Goodhart exploits the agent
+     eventually rolled back. v0.2.0 documents the multi-strategy response
+     and 5 paradigms tested (3 with clean positive edge).
+4. **Verify data exists**: Check that all six data files exist under
+   `user_data/data/`:
+   - `BTC_USDT-1h.feather`, `BTC_USDT-4h.feather`, `BTC_USDT-1d.feather`
+   - `ETH_USDT-1h.feather`, `ETH_USDT-4h.feather`, `ETH_USDT-1d.feather`
+
+   If any are missing, tell the user to run `uv run prepare.py`.
 5. **Initialize results.tsv**: Create `results.tsv` with just the header row:
    ```
    commit	event	strategy_name	sharpe	max_dd	note
@@ -36,12 +44,18 @@ To set up a new experiment, work with the user to:
 6. **Create 1-3 starting strategies.** This is the most important setup step.
    - Each strategy goes in its own file: `user_data/strategies/<YourName>.py`
    - Class name MUST match filename stem (FreqTrade requirement)
-   - Each strategy's docstring MUST fill all 5 metadata fields
-     (Paradigm, Hypothesis, Parent, Created, Status)
+   - Each strategy's docstring MUST fill all 6 metadata fields
+     (Paradigm, Hypothesis, Parent, Created, Status, Uses MTF)
    - **Each strategy MUST target a different paradigm.** Don't create 3
      mean-reversion variants as a "safe start" — that defeats the whole point
-     of v0.2.0. Pick from: mean-reversion, trend-following, volatility,
+     of v0.2.0+. Pick from: mean-reversion, trend-following, volatility,
      breakout, other. At least 2 different categories.
+   - **Strongly encouraged**: at least one of the starting strategies should
+     use the multi-timeframe affordance (see "Multi-timeframe" section below).
+     Otherwise v0.3.0 doesn't exercise the new capability and we'll have
+     learned nothing new vs v0.2.0. This is encouragement not mandate — if
+     you have strong reasoning to make all 3 single-TF, write that reasoning
+     in the notes.
    - Keep each strategy minimal initially. You'll iterate in the loop.
 7. **Confirm and go**: Confirm setup looks good with the user.
 
@@ -69,6 +83,68 @@ Each round runs a backtest on ALL active strategies on a **fixed timerange**
   `uv run run.py`.
 - Modify the timerange, pair list, or `_template.py.example`.
 - Have more than 3 active strategies at any time (see hard cap below).
+- Request timeframes other than `1h`, `4h`, `1d` in `@informative` decorators.
+  Only those three are pre-downloaded; anything else will crash the backtest
+  with a missing-data error.
+
+### Multi-timeframe affordance (new in v0.3.0)
+
+Data is pre-downloaded for three timeframes: **1h (base), 4h, 1d**. Strategies
+are always evaluated on the 1h base (this is set in `config.json` and cannot
+change), but can pull context from 4h and 1d using FreqTrade's `@informative`
+decorator.
+
+**How to use it:**
+
+```python
+from freqtrade.strategy import IStrategy, informative
+
+class YourStrategy(IStrategy):
+    timeframe = "1h"
+    # ... other attributes ...
+
+    @informative("4h")
+    def populate_indicators_4h(self, dataframe, metadata):
+        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        return dataframe
+
+    @informative("1d")
+    def populate_indicators_1d(self, dataframe, metadata):
+        dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
+        return dataframe
+
+    def populate_indicators(self, dataframe, metadata):
+        # rsi_4h and ema200_1d are now merged into the 1h dataframe automatically
+        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        return dataframe
+
+    def populate_entry_trend(self, dataframe, metadata):
+        # Example: MTF confluence entry
+        dataframe.loc[
+            (dataframe["rsi"] < 20)                        # 1h oversold
+            & (dataframe["rsi_4h"] < 60)                   # 4h not overbought
+            & (dataframe["close"] > dataframe["ema200_1d"]),  # 1d bull regime
+            "enter_long",
+        ] = 1
+        return dataframe
+```
+
+**Key properties** (FreqTrade handles these for you):
+- Column naming: `rsi` inside a `@informative('4h')` method becomes `rsi_4h` in the merged 1h dataframe
+- Look-ahead safe: FreqTrade shifts merged data by 1 period so current 1h bar never sees future higher-TF bars
+- Forward-filled: at any 1h bar, the merged `rsi_4h` value is the last fully-closed 4h bar's RSI
+
+**When to use MTF:**
+- Regime filters (`close > ema200_1d` for bull regime)
+- Trend confirmation (`ema9_4h > ema21_4h` to confirm shorter TFs aren't fighting a bigger trend)
+- Volatility context (`atr_4h` for relative-vol positioning)
+- Anything where "the big picture" matters
+
+**When NOT to use MTF:**
+- Pure mean-reversion on 1h may not need higher TFs (v0.2.0's MeanRevBB was pure 1h and hit 0.52 Sharpe)
+- If the paradigm doesn't have an intuitive higher-TF analog, don't force it
+
+**`startup_candle_count`** — bump this up if you use slow indicators on higher TFs. EMA200 on 1d needs 200 daily bars = 4800 hourly bars of warmup. Starting at 250-300 is usually safe for most MTF configurations.
 
 ### Hard rules on strategy lifecycle
 
@@ -244,7 +320,7 @@ A strategy deserves to die if:
 - It's consistently negative and further tweaks won't help (e.g. wrong
   timeframe for this paradigm)
 
-**Always log your reasoning.** These notes become the v0.2.0 retrospective —
+**Always log your reasoning.** These notes become the retrospective —
 future you (and the meta-analysis layer) will read them to extract what this
 run actually learned about BTC/ETH 1h.
 
@@ -255,6 +331,8 @@ From v0.1.0 we learned the agent can inadvertently game the metric:
   (regime-dependent, breaks in bear markets)
 - Tight `minimal_roi` clipping → tiny uniform returns → low stddev → huge
   Sharpe (profit goes DOWN even as Sharpe goes UP)
+
+**v0.2.0 added zero new Goodhart exploits over 81 rounds — try to keep that streak.**
 
 If you find a Sharpe jump that comes with a profit drop or a DD collapse to
 ~0, that's a gaming signal, not real edge. Log it, document the mechanism,
@@ -279,13 +357,19 @@ the computer, and expects you to continue working *indefinitely* until
 manually stopped.
 
 If you run out of ideas:
-- **Re-read the `versions/0.1.0/retrospective.md`** — it lists directions
-  v0.1.0 never tried (multi-timeframe, ATR dynamic exits, volatility regime,
-  per-pair customization, time-of-day effects)
+- **Re-read `versions/0.1.0/retrospective.md` and `versions/0.2.0/retrospective.md`**
+  — v0.1.0 listed directions it never tried (multi-timeframe was one!);
+  v0.2.0 attempted 5 paradigms and identified specific plateau ceilings per paradigm
+- Apply multi-timeframe to a stagnant strategy (if not using MTF yet) —
+  that's literally the new affordance of v0.3.0
 - Look at your stagnant strategies — can you fork them with a bolder change?
 - Try combining winners from different paradigms (e.g. a volatility-gated
   version of a winning mean-reversion strategy)
 - Try completely new indicator families you haven't touched
+- Check v0.2.0's comparative findings (volume-filter universal, ATR
+  paradigm-specific, regime-window paradigm-specific, ADX-lag universal) —
+  see if any transfer to your current strategies in ways v0.2.0 never tested
+  (e.g., 4h volume expansion instead of 1h)
 
 The loop runs until the human interrupts you, period.
 
