@@ -82,6 +82,7 @@ class FactorMeanRevCandidate(IStrategy):
         ).sum()
 
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
+        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
         dataframe["bb_middle"] = bands["middleband"]
@@ -112,6 +113,7 @@ class FactorMeanRevCandidate(IStrategy):
             condition = base_condition & (
                 stoch_stable < self.stable_stoch_entry_threshold
             )
+            condition &= dataframe["close"] > dataframe["ema50"]
 
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
