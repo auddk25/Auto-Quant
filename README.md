@@ -2,7 +2,7 @@
 
 > LLM-native autonomous quant research loop. Karpathy's
 > [autoresearch](https://github.com/karpathy/autoresearch) pattern applied to
-> FreqTrade strategies on a 5-pair crypto universe (BTC, ETH, SOL, BNB, AVAX)
+> FreqTrade strategies on a 2-pair crypto universe (BTC, ETH)
 > across 1h / 4h / 1d timeframes.
 
 The idea: give an LLM agent a FreqTrade backtest harness and a single strategy
@@ -45,7 +45,7 @@ Four things that matter:
   The agent does not touch this.
 - **`user_data/strategies/`** — **the directory the agent owns**. Each `.py`
   is one strategy; up to 3 active at a time. Agent creates / evolves / forks
-  / kills strategies here. Strategies evaluate on 1h base across the 5-pair
+  / kills strategies here. Strategies evaluate on 1h base across the 2-pair
   portfolio, and can opt into 4h/1d context AND/or cross-pair signals via
   FreqTrade's `@informative` decorator (see `_template.py.example` for the
   pattern). `run.py` reports per-pair metrics alongside the aggregate.
@@ -68,10 +68,13 @@ Plus:
 - **v0.2.0** ([archive](versions/0.2.0/)): multi-strategy (up to 3 slots).
   5 paradigms tested / 3 kept / 0 Goodhart attempts. Peak clean Sharpe
   0.67 (~3.5× better than v0.1.0's true-edge). See [retrospective](versions/0.2.0/retrospective.md).
-- **v0.3.0** (current): multi-strategy + multi-timeframe + multi-asset
-  portfolio. Adds 4h + 1d informative data, expands universe from 2 pairs
-  to 5 (BTC/ETH/SOL/BNB/AVAX), and emits per-pair metrics alongside
-  portfolio aggregate so agents can reason about per-asset edge. In-flight.
+- **v0.3.0** (archive(versions/0.3.0/)): multi-strategy + multi-timeframe
+  + multi-asset portfolio. Expanded universe to 5 pairs, added 4h + 1d
+  informative data. Peak clean Sharpe 1.07. See
+  retrospective(versions/0.3.0/retrospective.md).
+- **v0.4.0** (current): MTF trend + alternative data. Focused back to
+  2 pairs (BTC/ETH), integrates 6 alternative data sources (funding rate,
+  open interest, macro liquidity, DVOL, stablecoins) via `autoq_data` module.
 
 ## Requirements
 

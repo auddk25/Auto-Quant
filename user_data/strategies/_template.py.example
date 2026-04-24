@@ -25,8 +25,8 @@ MULTI-TIMEFRAME + CROSS-ASSET USAGE (v0.3.0)
 ========================================================================
 
 Data is pre-downloaded for three timeframes: 1h (base), 4h, and 1d.
-Five pairs are in the whitelist: BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT,
-AVAX/USDT. Each strategy is evaluated on ALL five pairs per backtest run;
+Two pairs are in the whitelist: BTC/USDT, ETH/USDT.
+Each strategy is evaluated on both pairs per backtest run;
 run.py reports aggregate + per-pair metrics.
 
 Two affordances are available to enrich strategy signals:
@@ -61,12 +61,12 @@ BTC/ETH price ratio that should be meaningful on BOTH pairs), use
 `informative_pairs()` + `dp.get_pair_dataframe()` with an `if
 metadata['pair'] == ...` branch instead.
 
-Only 1h, 4h, 1d × BTC, ETH, SOL, BNB, AVAX are pre-downloaded. Requesting
+Only 1h, 4h, 1d × BTC, ETH are pre-downloaded. Requesting
 anything else will crash with a missing-data error.
 
 If your strategy doesn't need MTF or cross-pair context, just delete the
 @informative methods and write a single-TF single-pair strategy; run.py
-still runs it across the 5-pair universe and reports per-pair results.
+still runs it across the 2-pair universe and reports per-pair results.
 """
 
 from pandas import DataFrame

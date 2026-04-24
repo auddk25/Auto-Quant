@@ -1,121 +1,38 @@
---- Session: 2026-04-24 00:00 ---
+== Session: 2026-04-24 23:00 (v0.4.0 pre-lock audit) ==
 ## Completed
-- Ran R103-R114 (12 experiments), all reverted. No parameter improvement found.
-- R103: EMA50 filter structurally incompatible with BB_lower entry
-- R104-R114: tested BB deviation, ROI, exit thresholds, MFI gate, stablecoin gate, tiered ROI, pair-adaptive exit, RSI entry swap, BB multiplier
-- Confirmed both AnchorFactor (20 rounds) and FactorMeanRevCandidate (24 rounds) at parameter ceiling
-- Key insight: mean-reversion 28% return vs buy-and-hold 427% over 3 years; need trend-following paradigm
+- Audited all 3 read-only files (config.json, prepare.py, run.py) — all clean
+- Updated README.md: 5-pair → 2-pair (3 places), added v0.4.0 version entry
+- Updated _template.py.example: 5-pair → 2-pair (3 places)
+- Updated autoq_data/sources.py: User-Agent 0.3.0 → 0.4.0
+- Changed handoff command separator from --- to == (Write tool truncation fix)
 ## Pending
-- Kill AnchorFactor or FactorMeanRevCandidate, replace with trend-following strategy
-- Run 2026 validation set (prepare_val.py + val.py) for out-of-sample test
-- Explore multi-timeframe (4h trend + 1h entry) or momentum paradigm
+- Set config.json, prepare.py, run.py to read-only (Windows attrib)
+- Create first MTF strategy: daily trend filter + 4h entry
+- Initialize results.tsv
+- Start experiment loop (R1+)
 ## Known Issues
-- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
-- CRLF/LF mismatch on Windows causes full-file diffs when editing AnchorFactor.py
----
+- Write tool truncates content containing --- (YAML doc separator) — now using == instead
+==
 
-## Current 1h roster (end of R114, 2026-04-24)
-- MeanRevADX (ANCHOR): main 2.1016, stress -0.3836, dual 1.1076
-- AnchorFactor: main 1.7825, stress -0.2445, dual 0.9717
-- FactorMeanRevCandidate: main 1.0815, stress 0.5122, dual 0.8538
+## Current v0.4.0 roster
+- No active strategies yet (clean slate)
+- Data ready: BTC/ETH × 1h/4h/1d
+- autoq_data module available: 6 alternative data sources
+- Read-only files audited and ready to lock: config.json, prepare.py, run.py
 
-
---- Session: 2026-04-24 12:00 ---
+== Session: 2026-04-24 22:00 (v0.4.0 branch setup) ==
 ## Completed
-- R123-R125 on 1h strategies, all reverted.
-- R123: FactorMeanRevCandidate ignore_roi_if_entry_signal True->False. Main 1.08->1.07. Reverted.
-- R124: AnchorFactor exit_profit_only True. Zero effect (ROI 0.008 binding). Reverted.
-- R125: FactorMeanRevCandidate RSI period 20->14. Main 1.08->1.00 (-7.5%). Reverted.
-- Confirmed all 3 strategies at parameter ceiling after 125 rounds total.
+- Created v0.4.0 branch from master (after syncing upstream fork)
+- Cleaned daily-trend branch: removed 21 temp files from .tmp/ and docs/
+- Imported valuable assets from daily-trend: autoq_data module, strategies, tests, tools
+- Major refactor: removed old strategies (archived to versions/0.4.0-legacy/)
+- Rewrote config.json, prepare.py, run.py for 2 pairs only
+- Wrote program.md: v0.4.0 plan (MTF trend + alternative data)
+- Downloaded all data: BTA/ETH x 1h/4h/1d (6 files)
 ## Pending
-- Need new strategy paradigm (trend-following confirmed failed on 1h in R115-R121)
-- Run 2026 validation set (prepare_val.py + val.py) for out-of-sample test
+- Create first MTF strategy: daily trend filter + 4h entry
+- Initialize results.tsv
+- Start experiment loop (R1+)
 ## Known Issues
-- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
-- CRLF/LF mismatch on Windows causes full-file diffs when editing AnchorFactor.py
----
-
-## Current 1h roster (end of R125, 2026-04-24)
-- MeanRevADX (ANCHOR): main 2.1016, stress -0.3836, dual 1.1076
-- AnchorFactor: main 1.7825, stress -0.2445, dual 0.9717
-- FactorMeanRevCandidate: main 1.0815, stress 0.5122, dual 0.8538
-
-
---- Session: 2026-04-24 16:00 (daily-trend branch R31-R66) ---
-## Completed
-- Ran R31-R66 (36 experiments) on daily-trend branch
-- KEY BREAKTHROUGH: breakeven stop pattern (-5% after 30% profit peak)
-- R44: DailyTrendSlow exit_profit_only=True. Sharpe 0.11->0.13, DD 5.8%->0.0%. KEPT.
-- R48: DailyTrendEMA breakeven stop -1% after 20%. Sharpe 0.12->0.44, DD 5.9%->0.0%. KEPT.
-- R50: DailyTrendEMA breakeven trigger 20%->30%. Sharpe 0.44->0.57. KEPT.
-- R52: DailyTrendEMA breakeven stop -1%->-5%. Sharpe 0.57->0.71. KEPT.
-- R55: DailyTrendSlow breakeven stop -5% after 30% + exit_profit_only. Sharpe 0.13->0.86. KEPT.
-- Dead ends: trailing stop (R31), RSI filter (R32), ADX/DI crossover (R33), ATR stoploss (R34),
-  SuperTrend exit (R38), Donchian breakout (R41), EMA100/200 (R42), EMA30/90 (R65)
-- Volume filter (R35-R37) improved Sharpe but removed too many trades
-- TP sweep (R39-R40, R46, R57-R58) showed TP not binding with breakeven stop
-- Breakeven parameter sweep (R49-R53, R59-R63) confirmed 30% trigger / -5% stop optimal
-## Pending
-- Run 2022 stress test on daily strategies
-- Consider adding daily strategies to main roster alongside 1h mean-reversion
-- Explore multi-timeframe combination (daily trend + 1h mean-rev)
-## Known Issues
-- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
-- CRLF/LF mismatch on Windows causes full-file diffs when editing AnchorFactor.py
----
-
-## Current daily-trend roster (end of R66, 2026-04-24)
-- DailyTrendSlow (EMA40/120): Sharpe 0.86, profit 118.9%, DD 0.0%, 6 trades, WR 100%
-- DailyTrendEMA (EMA50/150): Sharpe 0.71, profit 109.5%, DD 0.0%, 6 trades, WR 100%
-- BaH 50/50 benchmark: profit 271.9%, Sharpe 0.78, DD -40.0%
-
-## Current 1h roster (unchanged)
-- MeanRevADX (ANCHOR): main 2.1016, stress -0.3836, dual 1.1076
-- AnchorFactor: main 1.7825, stress -0.2445, dual 0.9717
-- FactorMeanRevCandidate: main 1.0815, stress 0.5122, dual 0.8538
-
-
---- Session: 2026-04-24 17:40 (daily-trend R67-R74) ---
-## Completed
-- R67: DailyMomentum (close crosses EMA100 + RSI>50). Sharpe 0.07, 30 trades, WR 27%. Too noisy. Reverted.
-- R68: DailyTrendWeekly (EMA35/105). Sharpe 0.66, weaker than both existing. Reverted.
-- R69: Hard stoploss -15% on DailyTrendEMA. Fires before breakeven activates. Reverted.
-- R70-R73: TP sweep, pair-adaptive breakeven, time-based exit. All zero effect or worse. Reverted.
-- R74: Breakeven stop on 1h FactorMeanRevCandidate. Catastrophic (Sharpe 1.08->0.05). Pattern does not transfer from daily to 1h.
-- CONFIRMED: both daily (R66) and 1h (R125) strategies at absolute parameter ceiling.
-## Pending
-- Download 2022 daily data for stress testing daily strategies
-- Run 2026 validation set on both daily and 1h strategies
-- Explore multi-timeframe combination (daily trend filter + 1h mean-rev entry)
-## Known Issues
-- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
-- No 2022 daily data in user_data/data_stress/ (only 1h exists)
----
-
-
---- Session: 2026-04-24 18:00 (validation + final experiments R75) ---
-## Completed
-- R75: Daily EMA50/150 regime filter on AnchorFactor. Zero effect (daily EMA bullish entire 2023-2025). Reverted.
-- 2026 Q1 validation (out-of-sample 2026-01-01 to 2026-04-20):
-  BTC BaH: -11.4%, ETH BaH: -22.3% (bear market)
-  AnchorFactor: -4.1% (1 trade), MeanRevADX: -3.9% (3 trades), FactorMeanRevCandidate: -1.0% (3 trades)
-  Interpretation: strategies correctly sit out bear market (EMA200 filter). Small losses vs large BaH losses.
-  FactorMeanRevCandidate best OOS performer (factor gates help in bearish regime).
-- All strategies confirmed at absolute ceiling across all windows:
-  1h: R125 rounds, daily: R73 rounds, validation: tested
-## Current combined roster
-### Daily (daily-trend branch)
-- DailyTrendSlow (EMA40/120): Sharpe 0.86, profit 118.9%, DD 0.0%, WR 100%
-- DailyTrendEMA (EMA50/150): Sharpe 0.71, profit 109.5%, DD 0.0%, WR 100%
-### 1h (main strategies)
-- MeanRevADX: main 2.10, stress -0.38, val -0.39
-- AnchorFactor: main 1.78, stress -0.24, val -100
-- FactorMeanRevCandidate: main 1.08, stress 0.51, val -0.16
-## Pending
-- Download 2022 daily data for stress testing daily strategies
-- Consider merging daily-trend branch into main
-## Known Issues
-- Tool layer strips square brackets; must use Python chr(91)/chr(93) patch scripts
-- No 2022 daily data for stress testing
-- Val window (2026 Q1) is bearish; strategies designed for uptrend correctly sit out
----
+- Write tool truncates content containing --- (YAML doc separator)
+==

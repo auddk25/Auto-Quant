@@ -318,7 +318,7 @@ class SourceClient:
         columns: list[str] | None = None,
         header: int | None = 0,
     ) -> pd.DataFrame:
-        request = Request(url, headers={"User-Agent": "AutoQuant/0.3.0"})
+        request = Request(url, headers={"User-Agent": "AutoQuant/0.4.0"})
         try:
             with urlopen(request, timeout=self.timeout) as response:
                 raw_bytes = response.read()
@@ -338,7 +338,7 @@ class SourceClient:
             final_url = f"{url}?{urlencode(params)}"
         request = Request(
             final_url,
-            headers={"User-Agent": "AutoQuant/0.3.0", "Accept": "application/json"},
+            headers={"User-Agent": "AutoQuant/0.4.0", "Accept": "application/json"},
         )
         with urlopen(request, timeout=self.timeout) as response:
             return json.load(response)
