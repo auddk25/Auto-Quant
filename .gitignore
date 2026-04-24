@@ -12,10 +12,21 @@ run.log
 
 # FreqTrade-generated output
 user_data/data/
+user_data/data_*/
 user_data/backtest_results/
 user_data/logs/
 user_data/hyperopt_results/
 user_data/notebooks/.ipynb_checkpoints/
+user_data/freqaimodels/
+user_data/hyperopts/
+user_data/plot/
+
+# Analysis artifacts
+*.png
+*.ipynb
+
+# Claude Code
+.claude/
 
 # Python / uv
 __pycache__/

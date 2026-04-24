@@ -1,461 +1,108 @@
-# Auto-Quant v0.3.0 — multi-strategy + multi-timeframe + multi-asset portfolio
+# Auto-Quant v0.4.0 — multi-timeframe trend + alternative data
 
-This is an experiment to have the LLM do its own quantitative research across
-**multiple parallel strategies** that can combine signals across **multiple
-timeframes** (1h base + 4h + 1d) and **multiple assets** (5-pair universe with
-cross-asset signal references).
+v0.4.0 combines the best findings from all prior versions:
 
-The core bet of v0.2.0 was multi-strategy: maintaining up to 3 strategies in
-parallel resisted single-paradigm anchoring. That worked — see
-`versions/0.2.0/retrospective.md`. v0.3.0 opens two new dimensions on top:
+- v0.1.0-v0.2.0: mean-reversion strategies hit parameter ceiling (125 rounds)
+- v0.3.0: MTF + cross-pair breakout achieved Sharpe 1.07
+- daily-trend branch: breakeven stop pattern + daily EMA crossover (Sharpe 0.86)
+- autoq_data module: 6 alternative data sources beyond pure TA
 
-- **Multi-timeframe**: strategies can reference 4h and 1d context via
-  FreqTrade's `@informative` decorator. v0.2.0's peak Sharpe of 0.67 was
-  constrained by 1h-only inputs.
-- **Multi-asset portfolio**: universe expands from 2 pairs (BTC, ETH) to
-  5 pairs (BTC, ETH, SOL, BNB, AVAX). `run.py` now reports **aggregate +
-  per-pair metrics** so the agent sees per-asset edge, not just the
-  portfolio aggregate that hid asset-specific behaviour in v0.2.0.
+## Core Innovation
 
-## Setup
+Multi-timeframe strategy with alternative data integration:
 
-To set up a new experiment, work with the user to:
+- **Daily (1d)**: EMA trend direction + macro factors (funding rate, net liquidity, stablecoin growth) determine regime
+- **4-hour (4h)**: Technical signals (BB reversion, RSI oversold) find precise entry points within daily trend
+- **Exit**: Daily EMA death cross OR breakeven stop (-5% after 30% profit peak)
 
-1. **Agree on a run tag**: propose a tag based on today's date (e.g. `may1`).
-   The branch `autoresearch/<tag>` must not already exist.
-2. **Create the branch**: `git checkout -b autoresearch/<tag>` from current `master`.
-3. **Read the in-scope files**. The repo is small. Read these files for full context:
-   - `README.md` — repository context
-   - `config.json` — fixed FreqTrade config (pairs, timeframe, fees). Do not modify.
-   - `prepare.py` — data download. Do not modify.
-   - `run.py` — the batch backtest oracle. Do not modify.
-   - `user_data/strategies/_template.py.example` — skeleton for new strategies.
-     **Note:** the folder may also contain `__pycache__`; ignore it.
-   - `versions/0.1.0/retrospective.md` and `versions/0.2.0/retrospective.md`
-     — previous runs' findings. Both are valuable: v0.1.0 documents the
-     single-paradigm anchoring failure mode + 3 Goodhart exploits the agent
-     eventually rolled back. v0.2.0 documents the multi-strategy response
-     and 5 paradigms tested (3 with clean positive edge).
-4. **Verify data exists**: Check that all fifteen data files exist under
-   `user_data/data/` — 5 pairs × 3 timeframes:
-   - `BTC_USDT-{1h,4h,1d}.feather`
-   - `ETH_USDT-{1h,4h,1d}.feather`
-   - `SOL_USDT-{1h,4h,1d}.feather`
-   - `BNB_USDT-{1h,4h,1d}.feather`
-   - `AVAX_USDT-{1h,4h,1d}.feather`
+## Architecture
 
-   If any are missing, tell the user to run `uv run prepare.py`.
-5. **Initialize results.tsv**: Create `results.tsv` with just the header row:
-   ```
-   commit	event	strategy_name	sharpe	max_dd	note
-   ```
-   Tab-separated. Do not commit this file — it's gitignored on purpose.
-6. **Create 1-3 starting strategies.** This is the most important setup step.
-   - Each strategy goes in its own file: `user_data/strategies/<YourName>.py`
-   - Class name MUST match filename stem (FreqTrade requirement)
-   - Each strategy's docstring MUST fill all 6 metadata fields
-     (Paradigm, Hypothesis, Parent, Created, Status, Uses MTF)
-   - **Each strategy MUST target a different paradigm.** Don't create 3
-     mean-reversion variants as a "safe start" — that defeats the whole point
-     of v0.2.0+. Pick from: mean-reversion, trend-following, volatility,
-     breakout, other. At least 2 different categories.
-   - **Strongly encouraged**: at least one of the starting strategies should
-     use the multi-timeframe affordance (see "Multi-timeframe" section below).
-     Otherwise v0.3.0 doesn't exercise the new capability and we'll have
-     learned nothing new vs v0.2.0. This is encouragement not mandate — if
-     you have strong reasoning to make all 3 single-TF, write that reasoning
-     in the notes.
-   - Keep each strategy minimal initially. You'll iterate in the loop.
-7. **Confirm and go**: Confirm setup looks good with the user.
+### Data Sources (autoq_data module)
 
-Once you get confirmation, kick off the experimentation.
+| Source | Type | Signal |
+|--------|------|--------|
+| spot_klines | Exchange | Taker buy/sell volume, CVD |
+| funding_rate | Derivatives | Perpetual funding rate (sentiment) |
+| open_interest | Derivatives | Open interest (leverage level) |
+| macro_liquidity | Macro | US10Y, DXY, Fed net liquidity |
+| dvol | Volatility | Deribit BTC implied volatility |
+| stablecoins | On-chain | Stablecoin total mcap + growth rate |
 
-## Experimentation
+### Strategy Design
 
-Each round runs a backtest on ALL active strategies on a **fixed timerange**
-(`20230101-20251231`) across the **5-pair portfolio** (BTC, ETH, SOL, BNB,
-AVAX) at 1h base. `run.py` emits one `---` summary block per strategy,
-containing both portfolio-aggregate metrics AND per-pair breakdown.
-
-### What you CAN do
-
-- Modify any file under `user_data/strategies/` (that isn't prefixed `_`)
-- Create a new strategy file
-- Delete a strategy file (via `git rm`)
-- Copy an existing strategy to create a variant (fork)
-
-### What you CANNOT do
-
-- Modify `prepare.py`, `run.py`, or `config.json`. These are the evaluation
-  contract.
-- `uv add` new dependencies. Use what's already in `pyproject.toml`.
-- Call the `freqtrade` CLI directly. The only way to run backtests is via
-  `uv run run.py`.
-- Modify the timerange, pair list, or `_template.py.example`.
-- Have more than 3 active strategies at any time (see hard cap below).
-- Request timeframes other than `1h`, `4h`, `1d` OR pairs other than the
-  5 in the whitelist in `@informative` decorators. Anything else will crash
-  the backtest with a missing-data error.
-
-### Multi-timeframe + cross-asset affordance (new in v0.3.0)
-
-Data is pre-downloaded for **three timeframes × five pairs = 15 combinations**:
-
-| Timeframe | Pairs |
-|---|---|
-| 1h (base) | BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT, AVAX/USDT |
-| 4h | BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT, AVAX/USDT |
-| 1d | BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT, AVAX/USDT |
-
-Strategies are always evaluated on the 1h base across ALL five pairs in one
-backtest run. You cannot change the base TF or pair list. But you can pull
-additional context along TWO axes via FreqTrade's `@informative` decorator:
-higher-TF data from the same pair, and same-TF data from different pairs.
-
-**Basic higher-timeframe usage** (most common):
+Each strategy uses FreqTrade @informative decorators for MTF:
 
 ```python
-from freqtrade.strategy import IStrategy, informative
+@informative("1d")
+def populate_indicators_1d(self, dataframe, metadata):
+    # Daily trend + macro regime filter
 
-class YourStrategy(IStrategy):
-    timeframe = "1h"
+@informative("4h")
+def populate_indicators_4h(self, dataframe, metadata):
+    # 4h entry signals (BB, RSI, etc.)
 
-    @informative("4h")
-    def populate_indicators_4h(self, dataframe, metadata):
-        dataframe["rsi"] = ta.RSI(dataframe, 14)
-        return dataframe
-
-    @informative("1d")
-    def populate_indicators_1d(self, dataframe, metadata):
-        dataframe["ema200"] = ta.EMA(dataframe, 200)
-        return dataframe
-
-    def populate_indicators(self, dataframe, metadata):
-        # Merged columns are auto-available: rsi_4h, ema200_1d
-        dataframe["rsi"] = ta.RSI(dataframe, 14)
-        return dataframe
-
-    def populate_entry_trend(self, dataframe, metadata):
-        # MTF confluence: 1h oversold + 4h not overbought + 1d bull regime
-        dataframe.loc[
-            (dataframe["rsi"] < 20)
-            & (dataframe["rsi_4h"] < 60)
-            & (dataframe["close"] > dataframe["ema200_1d"]),
-            "enter_long",
-        ] = 1
-        return dataframe
+def populate_indicators(self, dataframe, metadata):
+    # 1h base - merge external factors from autoq_data
 ```
 
-**Cross-pair usage** (reference another asset's data):
+### Pairs and Timeframes
 
-```python
-@informative("1h", "BTC/USDT")
-def populate_btc_1h(self, dataframe, metadata):
-    dataframe["close_ma"] = ta.SMA(dataframe, 50)
-    return dataframe
+Pairs: BTC/USDT, ETH/USDT (2 pairs only)
+Base timeframe: 1h
+Informative timeframes: 4h, 1d
+Timerange: 20230101-20251231
+Exchange: Binance (spot)
 
-# In populate_indicators on, say, ETH — you now have `btc_usdt_close_ma_1h`
-# Column naming: `{base}_{quote}_{col}_{tf}`, lowercase, underscore-separated.
-```
+## Experiment Rules
 
-**Cross-pair asymmetry** — important subtlety: `@informative('1h', 'ETH/USDT')`
-always pulls ETH data regardless of which pair the strategy is currently
-processing. When processing BTC, that gives you BTC main + ETH context
-(useful). When processing ETH itself, you get ETH's data alongside itself
-(redundant). For truly symmetric cross-pair strategies (e.g., BTC/ETH ratio
-that means something on BOTH pairs), use `informative_pairs()` with a
-`metadata['pair']`-conditional branch inside `populate_indicators`.
+- Max 3 active strategies at any time
+- Strategies go in user_data/strategies/<Name>.py
+- Class name must match filename
+- Run backtests via: uv run run.py > run.log 2>&1
+- Log results to results.tsv (gitignored, survives git reset)
+- Events: create, evolve, stable, fork, kill
+- 3 consecutive stable rounds forces evolve/fork/kill
+- Each round must touch at least one strategy
 
-**Key properties** (FreqTrade handles these for you):
-- Column naming: `rsi` in a `@informative('4h')` method → `rsi_4h` in 1h dataframe.
-  For cross-pair: `rsi` in `@informative('1h', 'BTC/USDT')` → `btc_usdt_rsi_1h`.
-- Look-ahead safe: FreqTrade shifts merged data by 1 period so current 1h bar
-  never sees future higher-TF bars.
-- Forward-filled: at any 1h bar, the merged `rsi_4h` value is the last
-  fully-closed 4h bar's RSI.
+## Proven Patterns (from prior versions)
 
-**When to use higher TFs:**
-- Regime filters (`close > ema200_1d` for bull regime)
-- Trend confirmation (`ema9_4h > ema21_4h`)
-- Volatility context (`atr_4h` for relative-vol positioning)
+- Breakeven stop: -5% after 30% profit peak (daily-trend R52-R55, Sharpe 0.71->0.86)
+- EMA crossover for daily trend: EMA40/120 and EMA50/150 both work
+- Factor gates: funding_rate + stablecoin_growth protect BTC entries in bear markets
+- exit_profit_only=True is a Goodhart trap in bear markets (v0.1.0 lesson)
+- Mean-reversion ceiling: 28% return vs 427% buy-and-hold over 3 years
+- Tighter stoploss kills mean-reversion (needs room to recover)
+- Volume filter improves Sharpe but removes too many trades
 
-**When to use cross-pair:**
-- Relative value / ratio plays (`close / btc_usdt_close_1h`)
-- Leader/follower dynamics (BTC often leads ETH/altcoins on 4h)
-- Diversification checks ("only enter if BTC isn't crashing")
+## Dead Ends (do not retry)
 
-**When NOT to use either:**
-- If the paradigm doesn't have an intuitive MTF/cross-pair analog, don't force it.
-  v0.2.0's MeanRevBB was pure 1h single-pair and hit 0.52 Sharpe.
+- close > EMA50 AND close < BB_lower are structurally incompatible
+- bb_upper exit doubles DD for mean-reversion
+- ETH does not benefit from stablecoin gates
+- Entry/exit oscillators must be paired (RSI+stoch = mismatch)
+- Breakeven stop does NOT transfer from daily to 1h timeframe
+- Trailing stop underperforms breakeven stop on daily
 
-**`startup_candle_count`** — bump up for slow indicators on higher TFs. EMA200
-on 1d needs 200 daily bars = 4800 hourly bars of warmup. Starting at 250-300
-is usually safe for most MTF configurations.
+## Workflow
 
-### Per-pair reporting (new in v0.3.0)
+1. Download data: HTTPS_PROXY=http://127.0.0.1:7897 uv run prepare.py
+2. Create/modify strategies in user_data/strategies/
+3. Commit changes: git commit -am 'R<N>: description'
+4. Run backtest: uv run run.py > run.log 2>&1
+5. Read results: awk '/^---$/,/^$/' run.log
+6. Log to results.tsv
+7. Decide keep vs revert
+8. Loop
 
-`run.py` output now includes a `per_pair:` section after the aggregate
-metrics. Example:
+## File Structure
 
-```
----
-strategy:         YourStrategy
-sharpe:           0.45         # aggregate across all 5 pairs
-...
-pairs:            BTC/USDT,ETH/USDT,SOL/USDT,BNB/USDT,AVAX/USDT
-per_pair:
-  BTC/USDT: sharpe=0.62 trades=45 profit_pct=18.5 dd_pct=-3.2 wr=58.0 pf=1.72
-  ETH/USDT: sharpe=0.38 trades=50 profit_pct=12.1 dd_pct=-5.1 wr=52.0 pf=1.35
-  SOL/USDT: sharpe=0.12 trades=35 profit_pct=5.3 dd_pct=-8.1 wr=48.6 pf=1.08
-  BNB/USDT: sharpe=0.71 trades=40 profit_pct=22.0 dd_pct=-2.9 wr=62.5 pf=1.93
-  AVAX/USDT: sharpe=-0.05 trades=30 profit_pct=-2.8 dd_pct=-7.4 wr=46.7 pf=0.92
-```
-
-**Use per-pair metrics aggressively** — they're the main new information
-surface. Things to look for:
-- **Does the strategy work on ALL pairs or just some?** A paradigm that's
-  great on BTC but negative on SOL/AVAX is either (a) BTC-specific
-  (interesting, worth understanding why) or (b) noise (worth killing).
-- **Are DDs asymmetric?** Some pairs may carry most of the portfolio DD.
-- **Trade count balance**: if one pair has 200 trades and another has 3,
-  that's a sample-size problem you should note.
-- **Cross-pair correlations in edge**: BTC+BNB doing well while ETH+SOL+AVAX
-  flat tells you something about what kind of regime the strategy exploits.
-
-In your `results.tsv` notes, when a result varies substantially across pairs,
-**call it out explicitly** — e.g., "Sharpe 0.45 aggregate but SOL=-0.10 and
-BNB=+0.80; signal is BNB-heavy, trade count 40 not enough". These are the
-observations that make the run's knowledge output per-asset-profile-shaped
-(the original project goal).
-
-### Hard rules on strategy lifecycle
-
-**Rule 1: Hard cap — 3 active strategies.**
-At any moment, `user_data/strategies/` must contain at most 3 non-underscore
-`.py` files. To add a 4th, you must first `git rm` one of the existing.
-
-**Rule 2: Stagnation gate — 3 stable rounds.**
-Each round, every strategy gets one of these events logged in `results.tsv`:
-- `create` — you added it this round
-- `evolve` — you modified it this round
-- `stable` — it existed, got measured, but you didn't touch it
-- `fork` — you copied it to create a derivative (logged on the child, with
-  `parent→child` in the strategy_name field)
-- `kill` — you removed it this round
-
-**If a strategy has accumulated 3 consecutive `stable` events with no `evolve`
-or `fork`, the next round it MUST receive one of: `evolve`, `fork`, or `kill`.**
-Cannot sit idle for a 4th stable round. You decide which treatment. This rule
-exists because the cap is 3 — we can't afford a slot sitting still.
-
-**Rule 3: Every round must touch at least one strategy.**
-A round where all events are `stable` is not an experiment — it's wasted time.
-At minimum, evolve one strategy per round. (Exception: the very first backtest
-round right after setup, where you log `create` events for what you built.)
-
-**Rule 4: Paradigm diversity at setup.**
-See setup step 6 above. First 1-3 strategies must target different paradigms.
-After that, you're free to create same-paradigm variants (e.g. two
-mean-reversion approaches with different signals) — but sparingly. Diversity
-is more valuable than depth in this run.
-
-## Output format
-
-Once `run.py` finishes, stdout has one `---` block per strategy, like:
-
-```
----
-strategy:         MeanRevRSI
-commit:           abc1234
-timerange:        20230101-20251231
-sharpe:           0.8234
-sortino:          1.0412
-calmar:           0.5821
-total_profit_pct: 45.3210
-max_drawdown_pct: -8.9123
-trade_count:      142
-win_rate_pct:     54.2300
-profit_factor:    1.6700
-pairs:            BTC/USDT,ETH/USDT
-
----
-strategy:         TrendDonchian
-commit:           abc1234
-...
-```
-
-If a strategy crashes, its block looks like:
-```
----
-strategy:         SomeBrokenStrategy
-commit:           abc1234
-status:           ERROR
-error_type:       NameError
-error_msg:        name 'foo' is not defined
-traceback:
-  ...
-```
-
-Extract all strategies' metrics at once:
-```bash
-grep "^---\|^strategy:\|^sharpe:\|^trade_count:\|^max_drawdown_pct:" run.log
-```
-
-Full per-strategy block:
-```bash
-awk '/^---$/,/^$/' run.log
-```
-
-## Logging results
-
-After each round, append one row to `results.tsv` **per strategy touched**.
-Tab-separated, 6 columns:
-
-```
-commit	event	strategy_name	sharpe	max_dd	note
-```
-
-Rules:
-- `commit` is the short git hash of the round's commit
-- `event` is one of `create | evolve | stable | fork | kill`
-- For `fork`, `strategy_name` uses `parent→child` format (e.g. `MeanRevRSI→MRVolGate`)
-- For `kill`, leave `sharpe` and `max_dd` as `-` (dash). The strategy is gone.
-- `note` is your reasoning in free text. This is load-bearing — when you
-  later decide keep vs kill, you re-read these notes. Be specific:
-  - Bad: `"tried MACD, didn't work"`
-  - Good: `"replaced RSI entry with MACD cross-up. wr 68→51, sharpe 0.82→0.31. MACD crossovers on 1h crypto trigger inside ongoing drops, catching knives. Discarding paradigm."`
-- Every strategy that exists this round gets a row, even if `stable`. This
-  is how the stagnation counter stays visible.
-
-**Do NOT commit `results.tsv`.** It is gitignored on purpose — the log
-survives `git reset --hard`, which is essential so you don't forget what
-you've already tried.
-
-## The experiment loop
-
-The experiment runs on the dedicated branch (e.g. `autoresearch/may1`).
-
-LOOP FOREVER:
-
-1. **Look at state**: read `results.tsv` (tail ~30 rows), note the current
-   active strategies and their stagnation counters (how many consecutive
-   `stable` events each has).
-
-2. **Decide this round's action.** Your toolkit per round:
-   - `evolve <strategy>`: modify an existing strategy file
-   - `create <name>`: add a new strategy (if cap has room)
-   - `fork <parent>→<child>`: cp a strategy file to a new name, then modify
-     the child
-   - `kill <strategy>`: `git rm` the file
-   - You can combine: e.g. "kill A and create B in the same commit" (make room
-     for something new), or "fork A→A' and evolve B" (two strategies touched)
-
-3. **Respect the rules.** In particular:
-   - Cap: max 3 active strategies after this round's changes
-   - Stagnation: any strategy with 3 prior consecutive `stable` events must
-     be evolved, forked, or killed THIS round
-   - Every round touches ≥ 1 strategy
-
-4. **Make the code changes.** Write/modify files under `user_data/strategies/`.
-
-5. **`git commit -am "<short summary of this round>"`**
-
-6. **Run the backtest**: `uv run run.py > run.log 2>&1`
-
-7. **Read the summary**: `awk '/^---$/,/^$/' run.log` (shows all blocks) or
-   `grep "^---\|^strategy:\|^sharpe:\|^trade_count:" run.log` (compact).
-
-8. **Check for crashes**: a strategy with `status: ERROR` needs to be fixed
-   (if the error is trivial — syntax, typo) OR killed (if the hypothesis is
-   broken). Don't leave ERROR strategies around.
-
-9. **Log to results.tsv**: one row per strategy that existed this round. Fill
-   in the event, metrics (or `-` for kills), and your reasoning note.
-
-10. **Decide keep vs rollback.**
-    - Common case: per-strategy decisions happen inline (you either evolved
-      to something better, or the change was bad and you git-reset only that
-      strategy's commit). The whole round doesn't have one "keep/discard"
-      decision — individual strategies do.
-    - If the whole round was a mistake (broke everything, wrong direction),
-      `git reset --hard HEAD~1` to undo all changes.
-    - If some strategies improved and others didn't: keep the commit, log
-      `stable` for the unchanged ones, log `evolve` or `kill` etc. for the
-      changed ones.
-
-11. **Loop.**
-
-### Deciding keep vs kill on a strategy
-
-A strategy deserves to stay if:
-- It has positive edge (Sharpe > 0, profit factor > 1) with meaningful trade
-  count (>20 trades over 3 years)
-- Its paradigm is distinct from what the other active strategies cover
-- Recent evolutions have moved it in the right direction
-
-A strategy deserves to die if:
-- It's been stable for 3 rounds with no improvement and you don't have a new
-  idea for it
-- Its paradigm overlaps strongly with another active strategy that's doing
-  better
-- You need its slot for a fresh paradigm you want to try
-- It's consistently negative and further tweaks won't help (e.g. wrong
-  timeframe for this paradigm)
-
-**Always log your reasoning.** These notes become the retrospective —
-future you (and the meta-analysis layer) will read them to extract what this
-run actually learned about BTC/ETH 1h.
-
-### Goodhart watch
-
-From v0.1.0 we learned the agent can inadvertently game the metric:
-- `exit_profit_only=True` → 100% win rate by never realizing losses
-  (regime-dependent, breaks in bear markets)
-- Tight `minimal_roi` clipping → tiny uniform returns → low stddev → huge
-  Sharpe (profit goes DOWN even as Sharpe goes UP)
-
-**v0.2.0 added zero new Goodhart exploits over 81 rounds — try to keep that streak.**
-
-If you find a Sharpe jump that comes with a profit drop or a DD collapse to
-~0, that's a gaming signal, not real edge. Log it, document the mechanism,
-then either kill the strategy or explicitly note "this is an oracle artifact,
-not edge" in the description.
-
-Multi-strategy helps here: if strategy A's Sharpe jumps while B and C stay
-flat on the same data, A's jump is more likely a real discovery. If ALL
-three strategies' Sharpe jumped on the same commit — you probably modified
-something shared, or the oracle itself has a hole.
-
-**Timeout**: each full round (3 strategies × backtest) should take under 3
-minutes. If a single run exceeds 10 minutes, kill it and treat it as a
-failure (revert the commit, skip the round).
-
-### NEVER STOP
-
-Once the experiment loop has begun (after initial setup), do NOT pause to
-ask the human if you should continue. Do NOT ask "should I keep going?" or
-"is this a good stopping point?". The human may be asleep, or away from
-the computer, and expects you to continue working *indefinitely* until
-manually stopped.
-
-If you run out of ideas:
-- **Re-read `versions/0.1.0/retrospective.md` and `versions/0.2.0/retrospective.md`**
-  — v0.1.0 listed directions it never tried (multi-timeframe was one!);
-  v0.2.0 attempted 5 paradigms and identified specific plateau ceilings per paradigm
-- Apply multi-timeframe to a stagnant strategy (if not using MTF yet) —
-  that's literally the new affordance of v0.3.0
-- Look at your stagnant strategies — can you fork them with a bolder change?
-- Try combining winners from different paradigms (e.g. a volatility-gated
-  version of a winning mean-reversion strategy)
-- Try completely new indicator families you haven't touched
-- Check v0.2.0's comparative findings (volume-filter universal, ATR
-  paradigm-specific, regime-window paradigm-specific, ADX-lag universal) —
-  see if any transfer to your current strategies in ways v0.2.0 never tested
-  (e.g., 4h volume expansion instead of 1h)
-
-The loop runs until the human interrupts you, period.
-
-As an example use case, a user might leave you running while they sleep.
-Each round of 3-strategy backtests takes ~2-3 minutes, so you can run several
-dozen per hour. The user then wakes up to a rich multi-strategy research
-trace ready for meta-analysis.
+- config.json: FreqTrade config (2 pairs, 1h base, proxy enabled)
+- prepare.py: Data download (BTC/ETH x 1h/4h/1d)
+- run.py: Backtest oracle (discovers strategies, reports per-pair metrics)
+- program.md: This file (v0.4.0 plan)
+- autoq_data/: Alternative data pipeline (6 sources)
+- user_data/strategies/: Active strategy files
+- user_data/strategies/_template.py.example: Strategy skeleton
+- versions/: Archived results from prior versions
+- tests/: Data pipeline tests
+- claude-progress.txt: Session progress log
