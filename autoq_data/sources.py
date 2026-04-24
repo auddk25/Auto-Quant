@@ -182,15 +182,15 @@ class SourceClient:
             return cached
 
         frames: list[pd.DataFrame] = []
-        cursor = int(start.timestamp() * 1000)
-        end_ms = int(end.timestamp() * 1000)
-        while cursor <= end_ms:
+        start_ms = int(start.timestamp() * 1000)
+        cursor_end = int(end.timestamp() * 1000)
+        while cursor_end >= start_ms:
             payload = self._get_json(
                 DERIBIT_DVOL_URL,
                 {
                     "currency": "BTC",
-                    "start_timestamp": cursor,
-                    "end_timestamp": end_ms,
+                    "start_timestamp": start_ms,
+                    "end_timestamp": cursor_end,
                     "resolution": 3600,
                 },
             )
@@ -204,7 +204,7 @@ class SourceClient:
             continuation = result.get("continuation")
             if continuation is None:
                 break
-            cursor = int(continuation) + 3600 * 1000
+            cursor_end = int(continuation)
 
         if not frames:
             raise RuntimeError("Deribit returned no DVOL history for requested range")
