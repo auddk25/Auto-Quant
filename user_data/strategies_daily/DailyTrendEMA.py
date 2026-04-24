@@ -28,13 +28,13 @@ class DailyTrendEMA(IStrategy):
     exit_profit_only = False
     ignore_roi_if_entry_signal = True
 
-    startup_candle_count: int = 200
+    startup_candle_count: int = 150
 
     tp1_profit = 0.60
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=100)
-        dataframe["ema150"] = ta.EMA(dataframe, timeperiod=200)
+        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
+        dataframe["ema150"] = ta.EMA(dataframe, timeperiod=150)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
