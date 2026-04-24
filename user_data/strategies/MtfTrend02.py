@@ -6,8 +6,8 @@ Hypothesis: Enter on structural oversold (4h EMA crossover in daily uptrend)
             inflow + rising fed liquidity). Hold the trend using daily EMA, not 4h noise.
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
-Parent: MtfTrend02 R6
-Created: R3, evolved R4-R7
+Parent: MtfTrend02 R7
+Created: R3, evolved R4-R8
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -116,15 +116,15 @@ class MtfTrend02(IStrategy):
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime,
                     current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
-        if current_profit >= 0.20:
-            return "overbought_30pct"
-        if current_profit >= 0.15 and trade.nr_of_successful_exits == 0:
-            return "partial_15pct"
+        if current_profit >= 0.30:
+            return "overbought_40pct"
+        if current_profit >= 0.25 and trade.nr_of_successful_exits == 0:
+            return "partial_25pct"
         return None
 
     def custom_stoploss(self, pair: str, trade, current_time, current_rate,
                         current_profit, **kwargs) -> float:
-        if current_profit >= 0.30:
+        if current_profit >= 0.40:
             return -0.05
         if pair == "ETH/USDT":
             return -0.06
