@@ -38,7 +38,7 @@ class FactorMeanRevCandidate(IStrategy):
 
     use_exit_signal = True
     exit_profit_only = False
-    ignore_roi_if_entry_signal = True
+    ignore_roi_if_entry_signal = False
 
     startup_candle_count: int = 200
     enriched_root: Path | None = None
