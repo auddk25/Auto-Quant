@@ -48,14 +48,14 @@ class TrendFollowEMA(IStrategy):
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=20)
 
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
-        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
+        dataframe["ema100"] = ta.EMA(dataframe, timeperiod=100)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        ema50_cross_above = (dataframe["ema50"] > dataframe["ema200"]) & (dataframe["ema50"].shift(1) <= dataframe["ema200"].shift(1))
-        base_condition = ema50_cross_above
-        base_condition &= dataframe["adx"] > 25
+        ema100_cross_above = (dataframe["ema100"] > dataframe["ema200"]) & (dataframe["ema100"].shift(1) <= dataframe["ema200"].shift(1))
+        base_condition = ema100_cross_above
+        base_condition &= dataframe["adx"] > 30
         base_condition &= dataframe["rsi"] > 50
 
         condition = base_condition
@@ -64,7 +64,7 @@ class TrendFollowEMA(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = dataframe["ema50"] < dataframe["ema200"]
+        exit_cond = dataframe["ema100"] < dataframe["ema200"]
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
 
