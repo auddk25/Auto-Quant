@@ -1,5 +1,5 @@
 """
-DailyTrendEMA -- Daily trend-following with pullback entry
+DailyTrendEMA -- Daily EMA crossover trend-following strategy
 """
 
 from typing import Optional
@@ -19,12 +19,9 @@ class DailyTrendEMA(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 10.0}
-    stoploss = -0.10
+    stoploss = -0.99
 
-    trailing_stop = True
-    trailing_stop_positive = 0.03
-    trailing_stop_positive_offset = 0.08
-    trailing_only_offset_is_reached = True
+    trailing_stop = False
     process_only_new_candles = True
 
     use_exit_signal = True
@@ -33,28 +30,31 @@ class DailyTrendEMA(IStrategy):
 
     startup_candle_count: int = 50
 
+    tp1_profit = 0.20
+    tp2_profit = 0.50
+
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
         dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
-        dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Uptrend: EMA20 > EMA50, price above EMA200
-        uptrend = (dataframe["ema20"] > dataframe["ema50"]) & (dataframe["close"] > dataframe["ema200"])
-        # Pullback: low near EMA20, close recovers above
-        pullback = (dataframe["low"] <= dataframe["ema20"] * 1.005) & (dataframe["close"] > dataframe["ema20"])
-        # RSI in healthy range (not overbought, not crashing)
-        rsi_ok = (dataframe["rsi"] > 40) & (dataframe["rsi"] < 65)
-        condition = uptrend & pullback & rsi_ok & (dataframe["adx"] > 20)
+        cross_up = (dataframe["ema20"] > dataframe["ema50"]) & (dataframe["ema20"].shift(1) <= dataframe["ema50"].shift(1))
+        condition = cross_up & (dataframe["adx"] > 15)
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Exit when close drops below EMA20 (faster than EMA50)
-        trend_break = dataframe["close"] < dataframe["ema20"]
-        dataframe.loc[trend_break, "exit_long"] = 1
+        cross_down = (dataframe["ema20"] < dataframe["ema50"]) & (dataframe["ema20"].shift(1) >= dataframe["ema50"].shift(1))
+        dataframe.loc[cross_down, "exit_long"] = 1
         return dataframe
+
+    def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
+        if current_profit >= self.tp2_profit:
+            return "tp2_50pct_profit"
+        if current_profit >= self.tp1_profit:
+            return "tp1_20pct_profit"
+        return None
 
