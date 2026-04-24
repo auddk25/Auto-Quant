@@ -30,7 +30,7 @@ class TrendFollowEMA(IStrategy):
     minimal_roi = {"0": 0.03}
     stoploss = -0.05
 
-    trailing_stop = False
+    trailing_stop = True
     trailing_stop_positive = 0.03
     trailing_stop_positive_offset = 0.05
     trailing_only_offset_is_reached = True
@@ -46,20 +46,16 @@ class TrendFollowEMA(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=20)
-
         dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
-        dataframe["ema100"] = ta.EMA(dataframe, timeperiod=100)
+        dataframe["high_48"] = dataframe["high"].rolling(48).max()
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
-        bands = ta.BBANDS(dataframe, timeperiod=25, nbdevup=2.18, nbdevdn=2.18)
-        dataframe["bb_upper"] = bands["upperband"]
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        base_condition = dataframe["ema100"] > dataframe["ema200"]
-        base_condition &= dataframe["close"] < dataframe["ema100"] * 1.01
+        base_condition = dataframe["close"] > dataframe["high_48"].shift(1)
         base_condition &= dataframe["close"] > dataframe["ema200"]
-        base_condition &= dataframe["rsi"] < 45
-        base_condition &= dataframe["adx"] > 20
+        base_condition &= dataframe["adx"] > 25
+        base_condition &= dataframe["rsi"] > 55
 
         condition = base_condition
 
@@ -67,7 +63,7 @@ class TrendFollowEMA(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["rsi"] > 70) | (dataframe["close"] > dataframe["bb_upper"])
+        exit_cond = dataframe["rsi"] > 75
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
 
