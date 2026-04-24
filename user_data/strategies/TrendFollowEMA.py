@@ -30,7 +30,10 @@ class TrendFollowEMA(IStrategy):
     minimal_roi = {"0": 0.05}
     stoploss = -0.05
 
-    trailing_stop = False
+    trailing_stop = True
+    trailing_stop_positive = 0.03
+    trailing_stop_positive_offset = 0.05
+    trailing_only_offset_is_reached = True
     process_only_new_candles = True
 
     use_exit_signal = True
@@ -61,7 +64,7 @@ class TrendFollowEMA(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["ema50"] < dataframe["ema200"]) | (dataframe["rsi"] > 75)
+        exit_cond = dataframe["ema50"] < dataframe["ema200"]
         dataframe.loc[exit_cond, "exit_long"] = 1
         return dataframe
 
