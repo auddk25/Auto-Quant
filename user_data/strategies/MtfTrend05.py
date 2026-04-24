@@ -7,7 +7,7 @@ Hypothesis: CVD buyer confirmation for BTC only; ETH without CVD
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
 Parent: MtfTrend04 R13 (fork)
-Created: R14, evolved R15-R20 (no stoploss, accept drawdown)
+Created: R14, evolved R15-R21 (R15 confirmed best)
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -30,7 +30,7 @@ class MtfTrend05(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 100}
-    stoploss = -0.99
+    stoploss = -0.08
 
     trailing_stop = False
     process_only_new_candles = True
@@ -127,4 +127,8 @@ class MtfTrend05(IStrategy):
 
     def custom_stoploss(self, pair: str, trade, current_time, current_rate,
                         current_profit, **kwargs) -> float:
+        if current_profit >= 0.30:
+            return -0.05
+        if pair == "ETH/USDT":
+            return -0.06
         return self.stoploss
