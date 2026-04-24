@@ -28,24 +28,24 @@ class DailyTrendEMA(IStrategy):
     exit_profit_only = False
     ignore_roi_if_entry_signal = True
 
-    startup_candle_count: int = 150
+    startup_candle_count: int = 180
 
     tp1_profit = 0.60
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
-        dataframe["ema150"] = ta.EMA(dataframe, timeperiod=150)
+        dataframe["ema60"] = ta.EMA(dataframe, timeperiod=60)
+        dataframe["ema180"] = ta.EMA(dataframe, timeperiod=180)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        cross_up = (dataframe["ema50"] > dataframe["ema150"]) & (dataframe["ema50"].shift(1) <= dataframe["ema150"].shift(1))
+        cross_up = (dataframe["ema60"] > dataframe["ema180"]) & (dataframe["ema60"].shift(1) <= dataframe["ema180"].shift(1))
         condition = cross_up & (dataframe["adx"] > 15)
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        cross_down = (dataframe["ema50"] < dataframe["ema150"]) & (dataframe["ema50"].shift(1) >= dataframe["ema150"].shift(1))
+        cross_down = (dataframe["ema60"] < dataframe["ema180"]) & (dataframe["ema60"].shift(1) >= dataframe["ema180"].shift(1))
         dataframe.loc[cross_down, "exit_long"] = 1
         return dataframe
 
