@@ -35,12 +35,10 @@ class DailyTrendSlow(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema40"] = ta.EMA(dataframe, timeperiod=40)
         dataframe["ema120"] = ta.EMA(dataframe, timeperiod=120)
-        dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         cross_up = (dataframe["ema40"] > dataframe["ema120"]) & (dataframe["ema40"].shift(1) <= dataframe["ema120"].shift(1))
-        cross_up &= dataframe["close"] > dataframe["ema200"]
         dataframe.loc[cross_up, "enter_long"] = 1
         return dataframe
 
