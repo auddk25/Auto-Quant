@@ -48,6 +48,9 @@ class AnchorFactor(IStrategy):
         "stablecoin_mcap_growth",
     ]
 
+    def informative_pairs(self):
+        return [("BTC/USDT", "1d"), ("ETH/USDT", "1d")]
+
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe = merge_external_factors(
             dataframe,
@@ -56,6 +59,16 @@ class AnchorFactor(IStrategy):
             enriched_root=self.enriched_root,
         )
 
+        inf_df = self.dp.get_pair_dataframe(metadata["pair"], "1d")
+        if len(inf_df) > 0:
+            inf_df["ema50d"] = ta.EMA(inf_df, timeperiod=50)
+            inf_df["ema150d"] = ta.EMA(inf_df, timeperiod=150)
+            inf_df["daily_bull"] = (inf_df["ema50d"] > inf_df["ema150d"]).astype(int)
+            inf_df = inf_df[["date", "daily_bull"]]
+            dataframe = dataframe.merge(inf_df, on="date", how="left")
+            dataframe["daily_bull"] = dataframe["daily_bull"].ffill().fillna(0)
+        else:
+            dataframe["daily_bull"] = 1
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=20)
         dataframe["stablecoin_mcap_growth_7d"] = dataframe["stablecoin_mcap_growth"].rolling(
             24 * 7
@@ -70,7 +83,8 @@ class AnchorFactor(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        base_condition = dataframe["close"] > dataframe["ema200"]
+        base_condition = dataframe["daily_bull"] == 1
+        base_condition &= dataframe["close"] > dataframe["ema200"]
         base_condition &= dataframe["adx"] > 19
         base_condition &= dataframe["close"] < dataframe["bb_lower"] * 0.997
         base_condition &= dataframe["rsi"] < 40
