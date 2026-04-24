@@ -3,11 +3,11 @@
 Paradigm: trend-following with macro confirmation and scaled profit-taking
 Hypothesis: Enter on structural oversold (4h EMA crossover in daily uptrend)
             ONLY when macro regime is favorable (positive funding + stablecoin
-            inflow + low DVOL). Hold the trend using daily EMA, not 4h noise.
+            inflow + rising fed liquidity). Hold the trend using daily EMA, not 4h noise.
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
-Parent: MtfTrend02 R5
-Created: R3, evolved R4-R6
+Parent: MtfTrend02 R6
+Created: R3, evolved R4-R7
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -65,11 +65,15 @@ class MtfTrend02(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe = merge_external_factors(
             dataframe, metadata,
-            columns=["funding_rate", "stablecoin_mcap_growth", "btc_dvol"],
+            columns=["funding_rate", "stablecoin_mcap_growth", "btc_dvol", "fed_net_liquidity"],
         )
         dataframe["funding_rate"] = dataframe["funding_rate"].fillna(0)
         dataframe["stablecoin_mcap_growth"] = dataframe["stablecoin_mcap_growth"].fillna(0)
         dataframe["btc_dvol"] = dataframe["btc_dvol"].fillna(60)
+        dataframe["fed_net_liquidity"] = dataframe["fed_net_liquidity"].ffill()
+        dataframe["fed_liq_rising"] = (
+            dataframe["fed_net_liquidity"] > dataframe["fed_net_liquidity"].shift(168)
+        ).astype(int)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -86,7 +90,8 @@ class MtfTrend02(IStrategy):
         macro_cond = (
             (dataframe["funding_rate"] > 0)
             & (dataframe["stablecoin_mcap_growth"] > 0)
-            & (dataframe["btc_dvol"] < 65)
+            & (dataframe["btc_dvol"] < 70)
+            & (dataframe["fed_liq_rising"] == 1)
         )
         volume_cond = dataframe["volume"] > 0
 
@@ -111,10 +116,10 @@ class MtfTrend02(IStrategy):
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime,
                     current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
-        if current_profit >= 0.40:
-            return "overbought_40pct"
-        if current_profit >= 0.25 and trade.nr_of_successful_exits == 0:
-            return "partial_25pct"
+        if current_profit >= 0.20:
+            return "overbought_30pct"
+        if current_profit >= 0.15 and trade.nr_of_successful_exits == 0:
+            return "partial_15pct"
         return None
 
     def custom_stoploss(self, pair: str, trade, current_time, current_rate,
