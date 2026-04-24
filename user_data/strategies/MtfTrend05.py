@@ -1,13 +1,13 @@
 """MtfTrend05 -- MTF trend + macro regime filter + hold trend + scaled exit
 
 Paradigm: asymmetric entry + CVD buyer confirmation
-Hypothesis: Same as MtfTrend04 but adds taker_delta_volume (24h sum > 0) as buyer confirmation
+Hypothesis: CVD buyer confirmation for BTC only; ETH without CVD (CVD hurts ETH)
             ONLY when macro regime is favorable (positive funding + stablecoin
             inflow + low DVOL). Hold the trend using daily EMA, not 4h noise.
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
 Parent: MtfTrend04 R13 (fork)
-Created: R14
+Created: R14, evolved R15
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -93,14 +93,14 @@ class MtfTrend05(IStrategy):
             & (dataframe["stablecoin_mcap_growth"] > 0)
             & (dataframe["btc_dvol"] < 65)
             & (dataframe["oi_rising"] == 1)
-            & (dataframe["cvd_24h"] > 0)
         )
         volume_cond = dataframe["volume"] > 0
 
         if is_btc:
             rsi_cond = (dataframe["rsi_4h"] > 40) & (dataframe["rsi_4h"] < 70)
             crossover = dataframe["ema12_prev_4h"] <= dataframe["ema26_prev_4h"]
-            entry = trend_cond & momentum_cond & crossover & macro_cond & rsi_cond & volume_cond
+            cvd_cond = dataframe["cvd_24h"] > 0
+            entry = trend_cond & momentum_cond & crossover & macro_cond & rsi_cond & cvd_cond & volume_cond
             dataframe.loc[entry, "enter_long"] = 1
         else:
             rsi_cond = (dataframe["rsi_4h"] > 30) & (dataframe["rsi_4h"] < 60)
