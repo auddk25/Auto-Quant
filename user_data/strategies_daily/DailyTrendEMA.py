@@ -54,7 +54,8 @@ class DailyTrendEMA(IStrategy):
         return self.stoploss
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
-        if current_profit >= self.tp1_profit:
+        tp = 0.70 if "BTC" in pair else 0.50
+        if current_profit >= tp:
             return "tp1_60pct_profit"
         return None
 
