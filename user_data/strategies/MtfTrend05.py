@@ -1,13 +1,13 @@
 """MtfTrend05 -- MTF trend + macro regime filter + hold trend + scaled exit
 
 Paradigm: asymmetric entry + CVD buyer confirmation
-Hypothesis: CVD buyer for BTC (>0); CVD anti-dump for ETH (>-500)
+Hypothesis: CVD buyer confirmation for BTC only; ETH without CVD
             ONLY when macro regime is favorable (positive funding + stablecoin
             inflow + low DVOL). Hold the trend using daily EMA, not 4h noise.
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
 Parent: MtfTrend04 R13 (fork)
-Created: R14, evolved R15-R17
+Created: R14, evolved R15-R18 (R15 params confirmed best)
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -105,8 +105,7 @@ class MtfTrend05(IStrategy):
         else:
             rsi_cond = (dataframe["rsi_4h"] > 30) & (dataframe["rsi_4h"] < 60)
             btc_gate = dataframe["btc_usdt_close_above_ema_1d"] == 1
-            cvd_not_dumping = dataframe["cvd_24h"] > -500
-            entry = trend_cond & momentum_cond & macro_cond & rsi_cond & btc_gate & cvd_not_dumping & volume_cond
+            entry = trend_cond & momentum_cond & macro_cond & rsi_cond & btc_gate & volume_cond
             dataframe.loc[entry, "enter_long"] = 1
 
         return dataframe
