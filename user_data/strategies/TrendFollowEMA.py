@@ -50,7 +50,8 @@ class TrendFollowEMA(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        base_condition = dataframe["ema50"] > dataframe["ema200"]
+        ema50_cross_above = (dataframe["ema50"] > dataframe["ema200"]) & (dataframe["ema50"].shift(1) <= dataframe["ema200"].shift(1))
+        base_condition = ema50_cross_above
         base_condition &= dataframe["adx"] > 25
         base_condition &= dataframe["rsi"] > 50
 
