@@ -21,10 +21,7 @@ class DailyTrendEMA(IStrategy):
     minimal_roi = {"0": 10.0}
     stoploss = -0.99
 
-    trailing_stop = True
-    trailing_stop_positive = 0.05
-    trailing_stop_positive_offset = 0.15
-    trailing_only_offset_is_reached = True
+    trailing_stop = False
     process_only_new_candles = True
 
     use_exit_signal = True
@@ -33,8 +30,8 @@ class DailyTrendEMA(IStrategy):
 
     startup_candle_count: int = 50
 
-    tp1_profit = 0.15
-    tp2_profit = 0.40
+    tp1_profit = 0.20
+    tp2_profit = 0.50
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
@@ -56,8 +53,8 @@ class DailyTrendEMA(IStrategy):
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
         if current_profit >= self.tp2_profit:
-            return "tp2_40pct_profit"
+            return "tp2_50pct_profit"
         if current_profit >= self.tp1_profit:
-            return "tp1_15pct_profit"
+            return "tp1_20pct_profit"
         return None
 
