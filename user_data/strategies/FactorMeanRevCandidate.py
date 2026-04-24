@@ -61,7 +61,7 @@ class FactorMeanRevCandidate(IStrategy):
             enriched_root=self.enriched_root,
         )
 
-        rsi = ta.RSI(dataframe, timeperiod=14)
+        rsi = ta.RSI(dataframe, timeperiod=20)
         stoch_factor = ta.STOCH(
             dataframe.assign(high=rsi, low=rsi, close=rsi),
             fastk_period=self.stoch_rsi_period,
