@@ -22,11 +22,10 @@ class DailyTrendSlow(IStrategy):
     stoploss = -0.99
 
     trailing_stop = False
-    use_custom_stoploss = True
     process_only_new_candles = True
 
     use_exit_signal = True
-    exit_profit_only = False
+    exit_profit_only = True
     ignore_roi_if_entry_signal = True
 
     startup_candle_count: int = 120
@@ -47,11 +46,6 @@ class DailyTrendSlow(IStrategy):
         cross_down = (dataframe["ema40"] < dataframe["ema120"]) & (dataframe["ema40"].shift(1) >= dataframe["ema120"].shift(1))
         dataframe.loc[cross_down, "exit_long"] = 1
         return dataframe
-
-    def custom_stoploss(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, after_fill: bool, **kwargs) -> float:
-        if current_profit >= 0.30:
-            return -0.05
-        return self.stoploss
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
         if current_profit >= self.tp1_profit:
