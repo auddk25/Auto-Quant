@@ -35,22 +35,6 @@ class DailyTrendEMA(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["ema150"] = ta.EMA(dataframe, timeperiod=150)
-        atr = ta.ATR(dataframe, timeperiod=10)
-        hl2 = (dataframe["high"] + dataframe["low"]) / 2
-        upper = hl2 + 3.0 * atr
-        lower = hl2 - 3.0 * atr
-        st = upper.copy()
-        direction = 1
-        for i in range(1, len(dataframe)):
-            if dataframe["close"].iloc[i - 1] > st.iloc[i - 1]:
-                direction = 1
-            elif dataframe["close"].iloc[i - 1] < st.iloc[i - 1]:
-                direction = -1
-            if direction == 1:
-                st.iloc[i] = max(lower.iloc[i], st.iloc[i - 1]) if st.iloc[i - 1] <= dataframe["close"].iloc[i - 1] else lower.iloc[i]
-            else:
-                st.iloc[i] = min(upper.iloc[i], st.iloc[i - 1]) if st.iloc[i - 1] >= dataframe["close"].iloc[i - 1] else upper.iloc[i]
-        dataframe["supertrend"] = st
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -59,8 +43,8 @@ class DailyTrendEMA(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        exit_cond = (dataframe["close"] < dataframe["supertrend"]) & (dataframe["close"].shift(1) >= dataframe["supertrend"].shift(1))
-        dataframe.loc[exit_cond, "exit_long"] = 1
+        cross_down = (dataframe["ema50"] < dataframe["ema150"]) & (dataframe["ema50"].shift(1) >= dataframe["ema150"].shift(1))
+        dataframe.loc[cross_down, "exit_long"] = 1
         return dataframe
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
