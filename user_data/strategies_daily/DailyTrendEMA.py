@@ -1,5 +1,5 @@
 """
-DailyTrendEMA -- Daily EMA crossover trend-following strategy
+DailyTrendEMA -- Daily trend-following with pullback entry
 """
 
 from typing import Optional
@@ -19,12 +19,9 @@ class DailyTrendEMA(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 10.0}
-    stoploss = -0.15
+    stoploss = -0.99
 
-    trailing_stop = True
-    trailing_stop_positive = 0.05
-    trailing_stop_positive_offset = 0.10
-    trailing_only_offset_is_reached = True
+    trailing_stop = False
     process_only_new_candles = True
 
     use_exit_signal = True
@@ -32,6 +29,9 @@ class DailyTrendEMA(IStrategy):
     ignore_roi_if_entry_signal = True
 
     startup_candle_count: int = 50
+
+    tp1_profit = 0.20
+    tp2_profit = 0.50
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
@@ -42,14 +42,25 @@ class DailyTrendEMA(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        cross_up = (dataframe["ema20"] > dataframe["ema50"]) & (dataframe["ema20"].shift(1) <= dataframe["ema50"].shift(1))
-        condition = cross_up & (dataframe["close"] > dataframe["ema200"])
-        condition &= dataframe["adx"] > 20
+        # Uptrend: EMA20 > EMA50, price above EMA200
+        uptrend = (dataframe["ema20"] > dataframe["ema50"]) & (dataframe["close"] > dataframe["ema200"])
+        # Pullback to EMA20: low touches or dips below EMA20, close recovers above
+        pullback = (dataframe["low"] <= dataframe["ema20"] * 1.01) & (dataframe["close"] > dataframe["ema20"])
+        # Trend strength
+        condition = uptrend & pullback & (dataframe["adx"] > 20)
         dataframe.loc[condition, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        cross_down = (dataframe["ema20"] < dataframe["ema50"]) & (dataframe["ema20"].shift(1) >= dataframe["ema50"].shift(1))
-        dataframe.loc[cross_down, "exit_long"] = 1
+        # Exit when trend breaks: close below EMA50
+        trend_break = dataframe["close"] < dataframe["ema50"]
+        dataframe.loc[trend_break, "exit_long"] = 1
         return dataframe
+
+    def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
+        if current_profit >= self.tp2_profit:
+            return "tp2_50pct_profit"
+        if current_profit >= self.tp1_profit:
+            return "tp1_20pct_profit"
+        return None
 
