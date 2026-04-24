@@ -19,11 +19,9 @@ class DailyTrendEMA(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 10.0}
-    stoploss = -0.15
+    stoploss = -0.99
 
-    trailing_stop = True
-    trailing_stop_positive = 0.15
-    trailing_stop_positive_offset = 0.20
+    trailing_stop = False
     process_only_new_candles = True
 
     use_exit_signal = True
