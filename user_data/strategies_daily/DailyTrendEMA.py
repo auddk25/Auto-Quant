@@ -30,8 +30,7 @@ class DailyTrendEMA(IStrategy):
 
     startup_candle_count: int = 50
 
-    tp1_profit = 0.20
-    tp2_profit = 0.50
+    tp1_profit = 0.30
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
@@ -52,9 +51,7 @@ class DailyTrendEMA(IStrategy):
         return dataframe
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
-        if current_profit >= self.tp2_profit:
-            return "tp2_50pct_profit"
         if current_profit >= self.tp1_profit:
-            return "tp1_20pct_profit"
+            return "tp1_30pct_profit"
         return None
 
