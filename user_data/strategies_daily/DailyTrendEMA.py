@@ -2,10 +2,14 @@
 DailyTrendEMA -- Daily EMA crossover trend-following strategy
 """
 
+from typing import Optional
+
 from pandas import DataFrame
 import talib.abstract as ta
 
 from freqtrade.strategy import IStrategy
+from freqtrade.persistence import Trade
+from datetime import datetime
 
 
 class DailyTrendEMA(IStrategy):
@@ -26,6 +30,8 @@ class DailyTrendEMA(IStrategy):
 
     startup_candle_count: int = 100
 
+    tp1_profit = 0.60
+
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema30"] = ta.EMA(dataframe, timeperiod=30)
         dataframe["ema100"] = ta.EMA(dataframe, timeperiod=100)
@@ -42,4 +48,9 @@ class DailyTrendEMA(IStrategy):
         cross_down = (dataframe["ema30"] < dataframe["ema100"]) & (dataframe["ema30"].shift(1) >= dataframe["ema100"].shift(1))
         dataframe.loc[cross_down, "exit_long"] = 1
         return dataframe
+
+    def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
+        if current_profit >= self.tp1_profit:
+            return "tp1_60pct_profit"
+        return None
 
