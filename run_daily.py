@@ -36,7 +36,7 @@ PROJECT_DIR = Path(__file__).parent.resolve()
 USER_DATA = PROJECT_DIR / "user_data"
 STRATEGIES_DIR = USER_DATA / "strategies_daily"
 CONFIG = PROJECT_DIR / "config_daily.json"
-TIMERANGE = "20230101-20260423"
+TIMERANGE = "20230101-20251231"
 PAIRS_STR = "BTC/USDT,ETH/USDT"
 
 
