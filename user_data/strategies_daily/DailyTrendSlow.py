@@ -31,7 +31,7 @@ class DailyTrendSlow(IStrategy):
 
     startup_candle_count: int = 120
 
-    tp1_profit = 0.60
+    tp1_profit = 0.50
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["ema40"] = ta.EMA(dataframe, timeperiod=40)
