@@ -28,9 +28,9 @@ class TrendFollowEMA(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 0.05}
-    stoploss = -0.05
+    stoploss = -0.10
 
-    trailing_stop = True
+    trailing_stop = False
     trailing_stop_positive = 0.03
     trailing_stop_positive_offset = 0.05
     trailing_only_offset_is_reached = True
