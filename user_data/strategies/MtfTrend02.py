@@ -3,11 +3,11 @@
 Paradigm: trend-following with macro confirmation and scaled profit-taking
 Hypothesis: Enter on structural oversold (4h EMA crossover in daily uptrend)
             ONLY when macro regime is favorable (positive funding + stablecoin
-            inflow). Hold the trend using daily EMA, not 4h noise.
+            inflow + low DVOL). Hold the trend using daily EMA, not 4h noise.
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
 Parent: MtfTrend02 R7
-Created: R3, evolved R4-R12 (no DVOL test)
+Created: R3, evolved R4-R13 (R6 params confirmed best)
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -65,10 +65,11 @@ class MtfTrend02(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe = merge_external_factors(
             dataframe, metadata,
-            columns=["funding_rate", "stablecoin_mcap_growth"],
+            columns=["funding_rate", "stablecoin_mcap_growth", "btc_dvol"],
         )
         dataframe["funding_rate"] = dataframe["funding_rate"].fillna(0)
         dataframe["stablecoin_mcap_growth"] = dataframe["stablecoin_mcap_growth"].fillna(0)
+        dataframe["btc_dvol"] = dataframe["btc_dvol"].fillna(60)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -85,6 +86,7 @@ class MtfTrend02(IStrategy):
         macro_cond = (
             (dataframe["funding_rate"] > 0)
             & (dataframe["stablecoin_mcap_growth"] > 0)
+            & (dataframe["btc_dvol"] < 65)
         )
         volume_cond = dataframe["volume"] > 0
 

@@ -7,7 +7,7 @@ Hypothesis: BTC requires 4h EMA crossover; ETH only needs EMA12>EMA26 state
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
 Parent: MtfTrend02 R9 (fork)
-Created: R10, evolved R11-R12
+Created: R10, evolved R11-R13 (R11 params confirmed best)
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -125,7 +125,7 @@ class MtfTrend04(IStrategy):
     def custom_stoploss(self, pair: str, trade, current_time, current_rate,
                         current_profit, **kwargs) -> float:
         if current_profit >= 0.40:
-            return -0.05
+            return -0.06
         if pair == "ETH/USDT":
             return -0.05
         return self.stoploss
