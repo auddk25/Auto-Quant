@@ -1,15 +1,21 @@
-# Auto-Quant v0.3.0 — multi-strategy + multi-timeframe autonomous research
+# Auto-Quant v0.3.0 — multi-strategy + multi-timeframe + multi-asset portfolio
 
 This is an experiment to have the LLM do its own quantitative research across
 **multiple parallel strategies** that can combine signals across **multiple
-timeframes** (1h base + 4h + 1d).
+timeframes** (1h base + 4h + 1d) and **multiple assets** (5-pair universe with
+cross-asset signal references).
 
 The core bet of v0.2.0 was multi-strategy: maintaining up to 3 strategies in
 parallel resisted single-paradigm anchoring. That worked — see
-`versions/0.2.0/retrospective.md`. v0.3.0 adds multi-timeframe support on
-top of that foundation: the hypothesis is that v0.2.0's peak Sharpe of 0.67
-was constrained by 1h-only inputs, and letting strategies use 4h or 1d
-context should unlock higher-quality signals.
+`versions/0.2.0/retrospective.md`. v0.3.0 opens two new dimensions on top:
+
+- **Multi-timeframe**: strategies can reference 4h and 1d context via
+  FreqTrade's `@informative` decorator. v0.2.0's peak Sharpe of 0.67 was
+  constrained by 1h-only inputs.
+- **Multi-asset portfolio**: universe expands from 2 pairs (BTC, ETH) to
+  5 pairs (BTC, ETH, SOL, BNB, AVAX). `run.py` now reports **aggregate +
+  per-pair metrics** so the agent sees per-asset edge, not just the
+  portfolio aggregate that hid asset-specific behaviour in v0.2.0.
 
 ## Setup
 
@@ -30,10 +36,13 @@ To set up a new experiment, work with the user to:
      single-paradigm anchoring failure mode + 3 Goodhart exploits the agent
      eventually rolled back. v0.2.0 documents the multi-strategy response
      and 5 paradigms tested (3 with clean positive edge).
-4. **Verify data exists**: Check that all six data files exist under
-   `user_data/data/`:
-   - `BTC_USDT-1h.feather`, `BTC_USDT-4h.feather`, `BTC_USDT-1d.feather`
-   - `ETH_USDT-1h.feather`, `ETH_USDT-4h.feather`, `ETH_USDT-1d.feather`
+4. **Verify data exists**: Check that all fifteen data files exist under
+   `user_data/data/` — 5 pairs × 3 timeframes:
+   - `BTC_USDT-{1h,4h,1d}.feather`
+   - `ETH_USDT-{1h,4h,1d}.feather`
+   - `SOL_USDT-{1h,4h,1d}.feather`
+   - `BNB_USDT-{1h,4h,1d}.feather`
+   - `AVAX_USDT-{1h,4h,1d}.feather`
 
    If any are missing, tell the user to run `uv run prepare.py`.
 5. **Initialize results.tsv**: Create `results.tsv` with just the header row:
@@ -64,8 +73,9 @@ Once you get confirmation, kick off the experimentation.
 ## Experimentation
 
 Each round runs a backtest on ALL active strategies on a **fixed timerange**
-(`20230101-20251231`) over BTC/USDT and ETH/USDT at 1h. `run.py` emits one
-`---` summary block per strategy.
+(`20230101-20251231`) across the **5-pair portfolio** (BTC, ETH, SOL, BNB,
+AVAX) at 1h base. `run.py` emits one `---` summary block per strategy,
+containing both portfolio-aggregate metrics AND per-pair breakdown.
 
 ### What you CAN do
 
@@ -83,68 +93,140 @@ Each round runs a backtest on ALL active strategies on a **fixed timerange**
   `uv run run.py`.
 - Modify the timerange, pair list, or `_template.py.example`.
 - Have more than 3 active strategies at any time (see hard cap below).
-- Request timeframes other than `1h`, `4h`, `1d` in `@informative` decorators.
-  Only those three are pre-downloaded; anything else will crash the backtest
-  with a missing-data error.
+- Request timeframes other than `1h`, `4h`, `1d` OR pairs other than the
+  5 in the whitelist in `@informative` decorators. Anything else will crash
+  the backtest with a missing-data error.
 
-### Multi-timeframe affordance (new in v0.3.0)
+### Multi-timeframe + cross-asset affordance (new in v0.3.0)
 
-Data is pre-downloaded for three timeframes: **1h (base), 4h, 1d**. Strategies
-are always evaluated on the 1h base (this is set in `config.json` and cannot
-change), but can pull context from 4h and 1d using FreqTrade's `@informative`
-decorator.
+Data is pre-downloaded for **three timeframes × five pairs = 15 combinations**:
 
-**How to use it:**
+| Timeframe | Pairs |
+|---|---|
+| 1h (base) | BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT, AVAX/USDT |
+| 4h | BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT, AVAX/USDT |
+| 1d | BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT, AVAX/USDT |
+
+Strategies are always evaluated on the 1h base across ALL five pairs in one
+backtest run. You cannot change the base TF or pair list. But you can pull
+additional context along TWO axes via FreqTrade's `@informative` decorator:
+higher-TF data from the same pair, and same-TF data from different pairs.
+
+**Basic higher-timeframe usage** (most common):
 
 ```python
 from freqtrade.strategy import IStrategy, informative
 
 class YourStrategy(IStrategy):
     timeframe = "1h"
-    # ... other attributes ...
 
     @informative("4h")
     def populate_indicators_4h(self, dataframe, metadata):
-        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        dataframe["rsi"] = ta.RSI(dataframe, 14)
         return dataframe
 
     @informative("1d")
     def populate_indicators_1d(self, dataframe, metadata):
-        dataframe["ema200"] = ta.EMA(dataframe, timeperiod=200)
+        dataframe["ema200"] = ta.EMA(dataframe, 200)
         return dataframe
 
     def populate_indicators(self, dataframe, metadata):
-        # rsi_4h and ema200_1d are now merged into the 1h dataframe automatically
-        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        # Merged columns are auto-available: rsi_4h, ema200_1d
+        dataframe["rsi"] = ta.RSI(dataframe, 14)
         return dataframe
 
     def populate_entry_trend(self, dataframe, metadata):
-        # Example: MTF confluence entry
+        # MTF confluence: 1h oversold + 4h not overbought + 1d bull regime
         dataframe.loc[
-            (dataframe["rsi"] < 20)                        # 1h oversold
-            & (dataframe["rsi_4h"] < 60)                   # 4h not overbought
-            & (dataframe["close"] > dataframe["ema200_1d"]),  # 1d bull regime
+            (dataframe["rsi"] < 20)
+            & (dataframe["rsi_4h"] < 60)
+            & (dataframe["close"] > dataframe["ema200_1d"]),
             "enter_long",
         ] = 1
         return dataframe
 ```
 
+**Cross-pair usage** (reference another asset's data):
+
+```python
+@informative("1h", "BTC/USDT")
+def populate_btc_1h(self, dataframe, metadata):
+    dataframe["close_ma"] = ta.SMA(dataframe, 50)
+    return dataframe
+
+# In populate_indicators on, say, ETH — you now have `btc_usdt_close_ma_1h`
+# Column naming: `{base}_{quote}_{col}_{tf}`, lowercase, underscore-separated.
+```
+
+**Cross-pair asymmetry** — important subtlety: `@informative('1h', 'ETH/USDT')`
+always pulls ETH data regardless of which pair the strategy is currently
+processing. When processing BTC, that gives you BTC main + ETH context
+(useful). When processing ETH itself, you get ETH's data alongside itself
+(redundant). For truly symmetric cross-pair strategies (e.g., BTC/ETH ratio
+that means something on BOTH pairs), use `informative_pairs()` with a
+`metadata['pair']`-conditional branch inside `populate_indicators`.
+
 **Key properties** (FreqTrade handles these for you):
-- Column naming: `rsi` inside a `@informative('4h')` method becomes `rsi_4h` in the merged 1h dataframe
-- Look-ahead safe: FreqTrade shifts merged data by 1 period so current 1h bar never sees future higher-TF bars
-- Forward-filled: at any 1h bar, the merged `rsi_4h` value is the last fully-closed 4h bar's RSI
+- Column naming: `rsi` in a `@informative('4h')` method → `rsi_4h` in 1h dataframe.
+  For cross-pair: `rsi` in `@informative('1h', 'BTC/USDT')` → `btc_usdt_rsi_1h`.
+- Look-ahead safe: FreqTrade shifts merged data by 1 period so current 1h bar
+  never sees future higher-TF bars.
+- Forward-filled: at any 1h bar, the merged `rsi_4h` value is the last
+  fully-closed 4h bar's RSI.
 
-**When to use MTF:**
+**When to use higher TFs:**
 - Regime filters (`close > ema200_1d` for bull regime)
-- Trend confirmation (`ema9_4h > ema21_4h` to confirm shorter TFs aren't fighting a bigger trend)
+- Trend confirmation (`ema9_4h > ema21_4h`)
 - Volatility context (`atr_4h` for relative-vol positioning)
-- Anything where "the big picture" matters
 
-**When NOT to use MTF:**
-- Pure mean-reversion on 1h may not need higher TFs (v0.2.0's MeanRevBB was pure 1h and hit 0.52 Sharpe)
-- If the paradigm doesn't have an intuitive higher-TF analog, don't force it
+**When to use cross-pair:**
+- Relative value / ratio plays (`close / btc_usdt_close_1h`)
+- Leader/follower dynamics (BTC often leads ETH/altcoins on 4h)
+- Diversification checks ("only enter if BTC isn't crashing")
 
-**`startup_candle_count`** — bump this up if you use slow indicators on higher TFs. EMA200 on 1d needs 200 daily bars = 4800 hourly bars of warmup. Starting at 250-300 is usually safe for most MTF configurations.
+**When NOT to use either:**
+- If the paradigm doesn't have an intuitive MTF/cross-pair analog, don't force it.
+  v0.2.0's MeanRevBB was pure 1h single-pair and hit 0.52 Sharpe.
+
+**`startup_candle_count`** — bump up for slow indicators on higher TFs. EMA200
+on 1d needs 200 daily bars = 4800 hourly bars of warmup. Starting at 250-300
+is usually safe for most MTF configurations.
+
+### Per-pair reporting (new in v0.3.0)
+
+`run.py` output now includes a `per_pair:` section after the aggregate
+metrics. Example:
+
+```
+---
+strategy:         YourStrategy
+sharpe:           0.45         # aggregate across all 5 pairs
+...
+pairs:            BTC/USDT,ETH/USDT,SOL/USDT,BNB/USDT,AVAX/USDT
+per_pair:
+  BTC/USDT: sharpe=0.62 trades=45 profit_pct=18.5 dd_pct=-3.2 wr=58.0 pf=1.72
+  ETH/USDT: sharpe=0.38 trades=50 profit_pct=12.1 dd_pct=-5.1 wr=52.0 pf=1.35
+  SOL/USDT: sharpe=0.12 trades=35 profit_pct=5.3 dd_pct=-8.1 wr=48.6 pf=1.08
+  BNB/USDT: sharpe=0.71 trades=40 profit_pct=22.0 dd_pct=-2.9 wr=62.5 pf=1.93
+  AVAX/USDT: sharpe=-0.05 trades=30 profit_pct=-2.8 dd_pct=-7.4 wr=46.7 pf=0.92
+```
+
+**Use per-pair metrics aggressively** — they're the main new information
+surface. Things to look for:
+- **Does the strategy work on ALL pairs or just some?** A paradigm that's
+  great on BTC but negative on SOL/AVAX is either (a) BTC-specific
+  (interesting, worth understanding why) or (b) noise (worth killing).
+- **Are DDs asymmetric?** Some pairs may carry most of the portfolio DD.
+- **Trade count balance**: if one pair has 200 trades and another has 3,
+  that's a sample-size problem you should note.
+- **Cross-pair correlations in edge**: BTC+BNB doing well while ETH+SOL+AVAX
+  flat tells you something about what kind of regime the strategy exploits.
+
+In your `results.tsv` notes, when a result varies substantially across pairs,
+**call it out explicitly** — e.g., "Sharpe 0.45 aggregate but SOL=-0.10 and
+BNB=+0.80; signal is BNB-heavy, trade count 40 not enough". These are the
+observations that make the run's knowledge output per-asset-profile-shaped
+(the original project goal).
 
 ### Hard rules on strategy lifecycle
 
