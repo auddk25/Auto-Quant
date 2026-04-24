@@ -1,13 +1,13 @@
 """MtfTrend04 -- MTF trend + macro regime filter + hold trend + scaled exit
 
-Paradigm: trend-following with relaxed entry for higher trade frequency
-Hypothesis: Enter when 4h EMA12>EMA26 (not just crossover) in daily uptrend
+Paradigm: asymmetric entry: BTC crossover + ETH relaxed trend-state
+Hypothesis: BTC requires 4h EMA crossover; ETH only needs EMA12>EMA26 state
             ONLY when macro regime is favorable (positive funding + stablecoin
             inflow + low DVOL). Hold the trend using daily EMA, not 4h noise.
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
 Parent: MtfTrend02 R9 (fork)
-Created: R10
+Created: R10, evolved R11
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -96,7 +96,8 @@ class MtfTrend04(IStrategy):
 
         if is_btc:
             rsi_cond = (dataframe["rsi_4h"] > 40) & (dataframe["rsi_4h"] < 70)
-            entry = trend_cond & momentum_cond & macro_cond & rsi_cond & volume_cond
+            crossover = dataframe["ema12_prev_4h"] <= dataframe["ema26_prev_4h"]
+            entry = trend_cond & momentum_cond & crossover & macro_cond & rsi_cond & volume_cond
             dataframe.loc[entry, "enter_long"] = 1
         else:
             rsi_cond = (dataframe["rsi_4h"] > 30) & (dataframe["rsi_4h"] < 60)
