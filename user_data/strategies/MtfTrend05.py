@@ -7,7 +7,7 @@ Hypothesis: CVD buyer confirmation for BTC only; ETH without CVD
             Exit in stages at overbought levels via custom_exit.
             ETH requires BTC gate.
 Parent: MtfTrend04 R13 (fork)
-Created: R14, evolved R15-R19 (hold trend longer)
+Created: R14, evolved R15-R20 (no stoploss, accept drawdown)
 Status: active
 Uses MTF: yes (1d trend, 4h entry, macro factors, cross-pair BTC for ETH)
 """
@@ -30,7 +30,7 @@ class MtfTrend05(IStrategy):
     can_short = False
 
     minimal_roi = {"0": 100}
-    stoploss = -0.08
+    stoploss = -0.99
 
     trailing_stop = False
     process_only_new_candles = True
@@ -111,20 +111,20 @@ class MtfTrend05(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe.loc[
+            (dataframe["ema50_1d"] < dataframe["ema150_1d"]),
+            "exit_long",
+        ] = 1
         return dataframe
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime,
                     current_rate: float, current_profit: float, **kwargs) -> Optional[str]:
-        if current_profit >= 0.50:
-            return "overbought_80pct"
-        if current_profit >= 0.50 and trade.nr_of_successful_exits == 0:
-            return "partial_50pct"
+        if current_profit >= 0.30:
+            return "overbought_40pct"
+        if current_profit >= 0.25 and trade.nr_of_successful_exits == 0:
+            return "partial_25pct"
         return None
 
     def custom_stoploss(self, pair: str, trade, current_time, current_rate,
                         current_profit, **kwargs) -> float:
-        if current_profit >= 0.80:
-            return -0.06
-        if pair == "ETH/USDT":
-            return -0.05
         return self.stoploss
