@@ -1,50 +1,67 @@
-== Session: 2026-04-25 01:00 (v0.4.0 experiment loop R1-R13) ==
+== Session: 2026-04-26 15:00 (R94-R96 CBBI + EMA strategies) ==
 ## Completed
-- R1: Created MtfTrend01 (daily EMA + 4h BB/RSI) -> Sharpe -0.05, -14.57%
-- R2: Evolved MtfTrend01 (stoploss -8%, RSI<30, BB width) -> -2.12%
-- R3: Forked MtfTrend02 (4h EMA crossover) -> BTC +20.10%, ETH -20.85%
-- R4: Evolved MtfTrend02 (BTC cross-pair filter for ETH) -> +6.00%
-- R5: Killed MtfTrend01, ETH RSI filter too strict -> 0 ETH trades
-- R6: BREAKTHROUGH - macro factors + hold trend + scaled exit -> +31.91%, Sharpe 0.059
-  - Fixed DVOL pagination bug, regenerated enriched data with full coverage
-  - Added funding_rate, stablecoin_growth, btc_dvol as macro filters
-  - Exit only on daily EMA death cross (hold trend)
-  - ETH finally profitable: +11.26%
-- R7: Early exits (15/30%) REGRESSED to -3.41% -> reverted
-- R8: fed_liq_rising alone regressed to +19% -> reverted
-- R9: Confirmed R6 params are optimal for MtfTrend02
-- R10: Forked MtfTrend04 (relaxed entry + OI) -> +58.30%, ETH +44.62%!
-- R11: Asymmetric entry (BTC crossover, ETH relaxed) -> DD -25.8% to -15.8%
-- R12: DVOL removal regressed MtfTrend02; ETH stoploss -5% no effect
-- R13: Both strategies confirmed at best params
+- R94: MtfTrendEmaValuation — EMA100/200 + AHR999 + CBBI four-indicator combo
+  Training +173.7% (4 trades) | 2026 Q1: 0% (death cross pre-emptive) ⭐
+- R95: MtfTrendEmaAhr — EMA100/200 + AHR999 (no CBBI)
+  Same as R94 (+173.7%) → archived (duplicate, CBBI condition wasn't binding)
+- R96: MtfTrendCbbiLead — CBBI-FIRST strategy (user's preferred indicator)
+  Pure CBBI timing: enter when CBBI < 0.4 (fear), exit when CBBI > 0.70 (greed)
+  Training +251.4% (1 trade) | 2026 Q1: 0% ⭐
+  Removing EMA entry filter boosted returns from +125% to +251% — CBBI works best alone
+- Archived MtfTrend25 (2026: -5.72% — worse bear protection than peers)
+- Final lineup: 6 active strategies (BuyAndHold, SmartHold, CbbiLead, EmaValuation,
+  Cycle01, Bear01)
 
-## Current Roster (2 active strategies)
-- MtfTrend02: Conservative. Sharpe 0.059, +31.91%, DD -11.8%, PF 1.81, 13 trades
-  - Daily EMA50/150 trend + 4h EMA12/26 crossover + macro (funding+stablecoin+DVOL)
-  - BTC +20.65%, ETH +11.26%
-- MtfTrend04: Aggressive. Sharpe 0.097, +57.21%, DD -15.8%, PF 1.72, 23 trades
-  - Asymmetric: BTC requires crossover, ETH only needs EMA state
-  - OI rising as additional filter
-  - BTC +15.85%, ETH +41.36%
-
-## Confirmed Dead Ends (v0.4.0)
-- Early profit-taking (15/30%) kills big winners (R7: -35% regression)
-- fed_net_liquidity rising filter hurts (-12.9% regression, R8)
-- DVOL threshold 70 vs 65 no meaningful difference
-- ETH stoploss -5% vs -6% no difference
-- Removing DVOL filter loses 15% profit (R12)
-
-## Key Discoveries
-- Macro filters (funding_rate > 0, stablecoin_growth > 0, DVOL < 65) are essential
-- Hold trend via daily EMA exit only (not 4h noise) is critical
-- BTC cross-pair gate for ETH entries works
-- Asymmetric entry rules (strict BTC, relaxed ETH) optimize both assets
-- OI rising (24h) adds value as momentum confirmation
-- DVOL pagination fix: Deribit API returns newest-first, need reverse pagination
+## Final Strategy Table
+Strategy         Training    2026 Q1   Trades  Key Indicators
+BuyAndHold       +429.6%     -16.0%    1       None (benchmark)
+SmartHold (R90)  +427.1%       0% ⭐   0       EMA50, EMA200, SMA200
+CbbiLead (R96)   +251.4%       0% ⭐   0       CBBI, EMA100, EMA200
+EmaValuation(R94)+173.7%       0% ⭐   0       EMA100, EMA200, AHR999, CBBI
+Cycle01 (R86)     +93.4%     -16.5%    2       AHR999, CBBI
+Bear01 (R87)      +58.8%       0% ⭐   0       SMA200, funding_rate, stablecoin
 
 ## Pending
-- MtfTrend02 has been stable 3 rounds (R6/R9/R13) -> needs evolve/fork/kill
-- Consider: fork with different EMA periods, or kill in favor of MtfTrend04
-- Explore: CVD (taker delta volume) as entry signal
-- Explore: open_interest for MtfTrend02
+- Parameter optimization: grid search optimal thresholds for each strategy
+- True 2026 Q2+ validation (requires ongoing data download)
+- Pyramiding / leverage strategies (need config changes)
+
+## Known Issues
+- CBBI API returns HTTP 406; cached data through 2026-04-24 still works
+- Cycle01 doesn't detect slow grinds (-16.5% in 2026) — cycle indicators are for tops/bottoms
+- config.json: spot-only, max_open_trades=1, can_short=False
+==
+== Session: 2026-04-26 14:00 (R90-R93 Validation Era) ==
+## Completed
+- Downloaded 2026 Q1 real OOS data from Binance (2026-01-01 ~ 2026-04-25)
+- Fixed val.py to merge training data tail for SMA200 warmup (300 days)
+- R90: MtfTrendSmartHold — instant entry + EMA50/200 death cross exit
+  Training +427.1% | 2026 Q1: 0% (death cross kept it out) ⭐
+- R91-R93: EmaCycle, Simple, Hybrid — all archived (exit signals too slow for -16% grind)
+- CORRECTED 2026 OOS: Bear01 0%, SmartHold 0%, others -6% to -17%
+
+## Key Insights
+- SMA200 ENTRY filter (Bear01) = best bear protection
+- EMA death cross (SmartHold) = pre-emptive exit, was already triggered before 2026
+- SMA200 EXIT filter (Hybrid) = too slow for -16% grind, needs -25%+
+- Entry filter > Exit filter: avoiding bad entries is more reliable than timing exits
+==
+== Session: 2026-04-25 23:00 (R85-R89 Cleanup & New Paradigms) ==
+## Completed
+- Strategy cleanup: archived 27 underperforming/duplicate/broken strategies
+  (MtfTrend18: future data cheat; MtfTrend40: zero trades; 25 others)
+- R86: MtfTrendCycle01 — AHR999+CBBI cycle resonance (+93.4%, 2 trades)
+- R87: MtfTrendBear01 — bear-aware trend following (+58.8%, 15 trades)
+- R88: MtfTrendGoldenCross — EMA50/200 crossover (+196%, 2 trades) → later archived
+- R89: MtfTrendCombo — cycle+trend composite → archived
+- DNS fix: removed aiodns/pycares from venv (Windows DNS incompatibility)
+- Config fix: added entry_pricing/exit_pricing to config.json (FreqTrade 2025.1)
+- Built autoq_data/cycle_bridge.py, prepare_cbbi.py, prepare_ahr999.py
+- Ported val.py for OOS validation
+- Rewrote STRATEGY_MAP.md with real backtest results
+
+## Key Insights
+- No active strategy beats BuyAndHold in 2023-2025 pure bull market
+- Simpler strategies = closer to benchmark
+- Real test is 2026 bear market (where active strategies can protect capital)
 ==

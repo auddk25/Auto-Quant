@@ -1,5 +1,5 @@
 {
-  "max_open_trades": 2,
+  "max_open_trades": 1,
   "stake_currency": "USDT",
   "stake_amount": "unlimited",
   "tradable_balance_ratio": 0.99,
@@ -7,46 +7,26 @@
   "timeframe": "1h",
   "dry_run": true,
   "dry_run_wallet": 10000,
-  "cancel_open_orders_on_exit": false,
-  "trading_mode": "spot",
-  "unfilledtimeout": {
-    "entry": 10,
-    "exit": 10,
-    "exit_timeout_count": 0,
-    "unit": "minutes"
-  },
-  "entry_pricing": {
-    "price_side": "same",
-    "use_order_book": false,
-    "order_book_top": 1,
-    "price_last_balance": 0.0,
-    "check_depth_of_market": {
-      "enabled": false,
-      "bids_to_ask_delta": 1
-    }
-  },
-  "exit_pricing": {
-    "price_side": "same",
-    "use_order_book": false,
-    "order_book_top": 1
-  },
   "exchange": {
     "name": "binance",
     "key": "",
     "secret": "",
-    "ccxt_config": {},
-    "ccxt_async_config": {
-      "aiohttp_trust_env": true
-    },
-    "pair_whitelist": ["BTC/USDT", "ETH/USDT"],
+    "pair_whitelist": ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
     "pair_blacklist": []
   },
   "pairlists": [{"method": "StaticPairList"}],
+  "entry_pricing": {
+    "price_side": "same",
+    "use_order_book": false,
+    "price_last_balance": 0.0
+  },
+  "exit_pricing": {
+    "price_side": "same",
+    "use_order_book": false,
+    "price_last_balance": 0.0
+  },
   "fee": 0.001,
   "dataformat_ohlcv": "feather",
   "dataformat_trades": "feather",
-  "internals": {
-    "process_throttle_secs": 5
-  },
   "timerange": "20230101-20251231"
 }
