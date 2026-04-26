@@ -51,8 +51,10 @@ class MtfTrendCbbiMomentum(IStrategy):
         # CBBI 5-day momentum: positive = fear subsiding
         # On 1h data, CBBI is daily — need to track daily changes
         # Use shift(24) for approximate daily change on 1h candles
-        dataframe["cbbi_5d_ago"] = dataframe["cbbi"].shift(24 * 5)
-        dataframe["cbbi_momentum"] = dataframe["cbbi"] - dataframe["cbbi_5d_ago"]
+        dataframe["cbbi_3d_ago"] = dataframe["cbbi"].shift(24 * 3)  # 3d for entry
+        dataframe["cbbi_5d_ago"] = dataframe["cbbi"].shift(24 * 5)  # 5d for exit
+        dataframe["cbbi_momentum_3d"] = dataframe["cbbi"] - dataframe["cbbi_3d_ago"]  # faster entry
+        dataframe["cbbi_momentum"] = dataframe["cbbi"] - dataframe["cbbi_5d_ago"]  # slower exit
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -60,7 +62,7 @@ class MtfTrendCbbiMomentum(IStrategy):
             return dataframe
 
         # CBBI rising (confidence returning) + not already greedy + trend up
-        fear_subsiding = dataframe["cbbi_momentum"] > 0
+        fear_subsiding = dataframe["cbbi_momentum_3d"] > 0
         not_euphoric = dataframe["cbbi"] < 0.65
         trend_ok = dataframe["ema100_1d"] > dataframe["ema200_1d"]
 

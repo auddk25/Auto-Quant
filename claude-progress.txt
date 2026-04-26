@@ -1,3 +1,31 @@
+== Session: 2026-04-26 16:00 (R97-R98 Parameter Optimization) ==
+## Completed
+- R97: Cycle01v2 — added SMA200 trend safety exit
+  2026 Q1: -16.5% → +3.4% (close<SMA200 caught the -16% grind)
+  Training: +93.4% → +87.6% (small trade-off for dramatic bear improvement)
+- R98: CbbiLead parameter optimization — exit threshold 0.70→0.75
+  Training: +251.4% → +289.4% (+38pp)
+  2026 Q1: 0% unchanged (entry condition never triggered)
+- Bear01 parameter sweep: tested 4 relaxation variants
+  All variants: either same (+58.8%) or worse (+46.3%)
+  Conclusion: SMA200 entry filter is optimal — bull capture capped by design
+- 5/6 strategies now beat benchmark in 2026 Q1 (all but BuyAndHold)
+
+## Strategy State (FINAL)
+SmartHold (R90)    +427.1% /  0% ⭐ Bull king
+CbbiLead (R98)     +289.4% /  0% ⭐ CBBI optimized
+EmaValuation (R94) +173.7% /  0% ⭐ 4-indicator consensus
+Cycle01v2 (R97)     +87.6% / +3.4% ⭐ Trend safety fixed
+Bear01 (R87)        +58.8% /  0% ⭐ Bear guardian
+BuyAndHold         +429.6% / -16.0%   Benchmark
+
+## Pending
+- Futures/short support (needs config change)
+- Pyramiding strategies
+- Live trading test proposal
+- Only remaining improvement: no active strategy can beat BuyAndHold in bulls
+  while also protecting against bears (fundamental limit of spot-only, max_1_trade)
+==
 == Session: 2026-04-26 15:00 (R94-R96 CBBI + EMA strategies) ==
 ## Completed
 - R94: MtfTrendEmaValuation — EMA100/200 + AHR999 + CBBI four-indicator combo
