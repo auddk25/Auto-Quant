@@ -56,26 +56,156 @@
 
 ### ⭐ CbbiMomentum (R99v4) — 周期之王
 
+**设计思路**: 不等恐惧，等恐惧消退。CBBI 是综合链上情绪指标(0~1)，它的方向比绝对水平更有信息量。
+
+**指标准备** (populate_indicators):
 ```
-入场: CBBI 3日动量 > 0 AND CBBI < 0.65 AND EMA100 > EMA200
-出场: CBBI 4日动量 < -0.03 OR CBBI > 0.80 OR EMA100 < EMA200
-BTC only | 固定止损 -0.25 | 全仓
+1. 加载日线 EMA100, EMA200 (通过 @informative("1d"))
+2. 加载 CBBI 日线数据 (通过 merge_cbbi)
+3. 计算 CBBI 3日动量 = 当前CBBI - 3天前CBBI  (入场信号)
+4. 计算 CBBI 4日动量 = 当前CBBI - 4天前CBBI  (出场信号)
 ```
 
-**为什么有效**: CBBI 聚合了 Pi Cycle、MVRV 等链上指标。它的方向变化比绝对水平更有信息量——恐惧消退 = 入场信号，信心回落 = 出场信号。3 日动量捕捉转折点，4 日动量确认信号。
+**入场判断** (populate_entry_trend, 仅 BTC/USDT):
+```
+IF 全部满足:
+  ① CBBI 3日动量 > 0          ← 恐惧在消退，信心恢复中
+  ② CBBI < 0.65               ← 还没到贪婪区，有上涨空间
+  ③ EMA100 > EMA200           ← 日线趋势向上
+  ④ volume > 0                ← 有交易量
+THEN:
+  enter_long = 1               ← 全仓买入 (custom_stake_amount = 99%钱包)
+```
+
+**出场判断** (populate_exit_trend):
+```
+IF 任一满足:
+  ① CBBI 4日动量 < -0.03      ← 信心在回落 (主要出场信号)
+  ② CBBI > 0.80               ← 极端贪婪，见顶信号
+  ③ EMA100 < EMA200           ← 日线趋势反转
+THEN:
+  exit_long = 1                ← 全部卖出
+```
+
+**风控参数**:
+```
+stoploss: -0.25 (固定止损，跌25%强制离场)
+minimal_roi: {"0": 100} (无止盈目标)
+max_open_trades: 1 (一次只持有一个仓位)
+process_only_new_candles: True (只在新区块产生时判断)
+```
+
+**为什么 3d/4d 而非其他**:
+```
+10组参数扫描结果:
+  Entry=3d, Exit=4d  →  均值 +40.9%  ← 最优
+  Entry=2d, Exit=4d  →  均值 +39.6%  ← 入场太快，假信号多
+  Entry=4d, Exit=5d  →  均值 +33.5%  ← 入场太慢，错过机会
+  Entry=3d, Exit=6d  →  均值 +36.7%  ← 出场太慢，利润回吐
+```
+
 
 ### SmartHold (R90) — 趋势压舱石
+
+**设计思路**: 牛市不需要择时——默认全仓，只在大趋势逆转时离场。
+
+**指标准备**:
 ```
-入场: 立即入场 | 出场: EMA50 < EMA200 AND close < SMA200
+1. 加载日线 EMA50, EMA200, SMA200 (通过 @informative("1d"))
+2. 无其他指标 — 最简单的策略
 ```
-牛市几乎完美跟踪。熊市中回撤大（-43.3%），适合做底仓。
+
+**入场判断** (仅 BTC/USDT):
+```
+IF volume > 0:              ← 有交易量的每个小时
+  enter_long = 1            ← 立即入场，不择时
+```
+
+**出场判断**:
+```
+IF 同时满足:
+  ① EMA50 < EMA200          ← 死叉形成
+  ② close < SMA200          ← 价格跌破200日均线
+THEN:
+  exit_long = 1              ← 趋势确认逆转才出场
+```
+
+**风控**:
+```
+stoploss: -0.99 (近乎不止损 — 信任双条件出场)
+```
+
+**适用场景**: 牛市底仓策略。赚取整个牛市的收益。熊市中死叉+破SMA200提供双重保护。
 
 ### Bear01 (R87) — 熊市保险
+
+**设计思路**: SMA200 是唯一可靠的牛熊分界线。上方才做多，下方绝对不碰。
+
+**指标准备**:
 ```
-入场: close > SMA200 + 资金费率 > -0.01 + 稳定币增速 > 0
-出场: close < SMA200
+1. 加载日线 SMA200 (通过 @informative("1d"))
+2. 加载资金费率 + 稳定币增速 (通过 merge_external_factors)
+3. fillna: funding_rate→0, stablecoin_growth→0
 ```
-SMA200 过滤最保守但最可靠。熊市中空仓避险。全周期跑赢 BuyAndHold。
+
+**入场判断** (全部满足才入场):
+```
+① close > SMA200            ← 在牛熊分界线上方
+② funding_rate > -0.01      ← 不是极端空头踩踏
+③ stablecoin_mcap_growth > 0 ← 流动性在流入，不是流出
+④ volume > 0
+THEN: enter_long = 1
+```
+
+**出场判断**:
+```
+IF close < SMA200:           ← 跌破牛熊分界线
+  exit_long = 1              ← 立即离场
+```
+
+**风控**:
+```
+stoploss: -0.25
+```
+
+**参数优化记录**: 测试了4组放松变体（放宽资金费率、放宽稳定币条件），全部更差或相同。当前阈值已最优。
+
+### MtfTrendLongShort (R102) — 期货多空
+
+**设计思路**: 把 CbbiMomentum 的逻辑镜像到做空方向。
+
+**入场判断**:
+```
+做多: CBBI 3d动量>0 + CBBI<0.65 + EMA100>EMA200
+做空: CBBI 3d动量<0 + CBBI>0.25 + EMA100<EMA200
+```
+
+**出场判断**:
+```
+做多出场: CBBI 4d动量<-0.03 | CBBI>0.80 | EMA100<EMA200
+做空出场: CBBI 4d动量>+0.03 | CBBI<0.15 | EMA100>EMA200
+```
+
+**状态**: config_futures.json 已创建，数据已下载，FreqTrade Binance期货 API 不稳定待修复。`_simulator_cbbi.py` 日线级验证完成。
+
+---
+
+## 已归档策略摘要
+
+| R# | 策略 | 归档原因 |
+|----|------|---------|
+| R86 | Cycle01 | AHR999+CBBI 入场，不识别阴跌(-16.5%在2026)；v2加SMA200出场改善到+3.4%，后被CbbiMomentum取代 |
+| R88 | GoldenCross | EMA50/200金叉死叉，+196%；被SmartHold取代(同范式，SmartHold更好) |
+| R89 | Combo | AHR999+金叉组合，+190%；冗余 |
+| R91-93 | EmaCycle/Simple/Hybrid | 测试EMA/SMA不同组合，无一超过CbbiMomentum |
+| R94 | EmaValuation | 4指标共振，+174%训练；CbbiMomentum动量版更好 |
+| R95 | EmaAhr | R94的无CBBI版，结果相同，CBBI条件不绑定 |
+| R96 | CbbiLead | CBBI绝对值<0.4入场，只在恐慌交易，5个窗口4个0%；被动量版取代 |
+| R97 | Cycle01v2 | 加SMA200趋势出场，2026改善；被CbbiMomentum取代 |
+| R88 | CbbiLead v2 | 出场0.70→0.75，+38pp；被3d/4d动量版取代 |
+| 10x | CB2d4d~CB4d7d | 参数扫描变体，均不如3d/4d组合 |
+| R101 | CbbiATR | ATR追踪止损，+208%→远不如固定止损(+668%) |
+| R101 | CbbiETH | 双币版本，ETH拖累回撤，BTC-only更好 |
 
 ---
 
@@ -88,13 +218,81 @@ uv run val_rolling.py      # 7 段滚动窗口 (全周期)
 uv run pytest tests/       # 13 个测试（基础设施健康检查）
 ```
 
-## 构建新策略
+## 构建新策略 — 完整步骤
 
+### Step 1: 复制模板
 ```bash
-cp _template.py.example MtfTrendNew.py
-# 编写策略 → uv run run.py → uv run val_rolling.py
-# 滚动均值 > +20% 才算有价值 (BuyAndHold 基线是 +27%)
+cp user_data/strategies/_template.py.example user_data/strategies/MtfTrendNew.py
 ```
+
+### Step 2: 编写策略类
+```python
+class MtfTrendNew(IStrategy):
+    INTERFACE_VERSION = 3
+    timeframe = "1h"
+    can_short = False       # 现货=False, 期货=True
+    max_open_trades = 1
+    minimal_roi = {"0": 100}
+    stoploss = -0.25
+    process_only_new_candles = True
+    use_exit_signal = True
+    startup_candle_count: int = 200
+```
+
+### Step 3: 加载指标
+```python
+# 日线指标 (通过 @informative("1d"))
+@informative("1d")
+def populate_indicators_1d(self, dataframe, metadata):
+    dataframe["ema100"] = ta.EMA(dataframe, timeperiod=100)
+    return dataframe
+
+# 1h指标 + 外部数据
+def populate_indicators(self, dataframe, metadata):
+    dataframe = merge_cbbi(dataframe, metadata)      # CBBI
+    dataframe = merge_ahr999(dataframe, metadata)    # AHR999
+    return dataframe
+```
+
+### Step 4: 编写入场/出场
+```python
+def populate_entry_trend(self, dataframe, metadata):
+    # 你的入场条件
+    dataframe.loc[condition, "enter_long"] = 1
+    return dataframe
+
+def populate_exit_trend(self, dataframe, metadata):
+    # 你的出场条件
+    dataframe.loc[condition, "exit_long"] = 1
+    return dataframe
+```
+
+### Step 5: 训练集回测 (~30秒)
+```bash
+uv run run.py | grep "total_profit\|trade_count\|sharpe"
+```
+验收标准: 训练收益 > +50%, 交易数 > 2
+
+### Step 6: 滚动窗口验证 (~2分钟, 最关键的检验)
+```bash
+uv run val_rolling.py
+```
+验收标准: 7段均值 > +20% (BuyAndHold 基线 +27%)
+
+### Step 7: 参数优化 (如有阈值)
+```python
+# 创建变体测试不同参数组合
+for entry_d, exit_d in [(2,4), (3,4), (3,5)]:
+    create_variant(entry_d, exit_d)
+    run backtest → val_rolling
+```
+选择均值最高的组合。
+
+### Step 8: 记录
+1. 在 `results.tsv` 添加一行 (round/strategy/event/metrics/notes)
+2. 在 `STRATEGY_MAP.md` 更新表格和策略详情
+3. Git commit: `Rxxx: strategy_name — one line description`
+4. `git push`
 
 ## 核心教训 (R1→R100)
 
