@@ -15,9 +15,9 @@ After 96 experiment rounds across 4 versions, here is what we learned.
 | Strategy | Indicators | Training (2023-25) | 2026 Q1 OOS |
 |---|---|---|---|
 | SmartHold (R90) | EMA50, EMA200, SMA200 | +427.1% | 0% ⭐ |
-| CbbiLead (R96) | CBBI, EMA100, EMA200 | +251.4% | 0% ⭐ |
+| CbbiLead (R98) | CBBI, EMA100, EMA200 | +289.4% | 0% ⭐ |
 | EmaValuation (R94) | EMA100, EMA200, AHR999, CBBI | +173.7% | 0% ⭐ |
-| Cycle01 (R86) | AHR999, CBBI | +93.4% | -16.5% |
+| Cycle01v2 (R97) | AHR999, CBBI, SMA200 | +87.6% | +3.4% ⭐ |
 | Bear01 (R87) | SMA200, funding rate, stablecoin | +58.8% | 0% ⭐ |
 | BuyAndHold | (benchmark) | +429.6% | -16.0% |
 
@@ -29,7 +29,7 @@ After 96 experiment rounds across 4 versions, here is what we learned.
 
 2. **Bear protection is where active management wins.** In 2026 Q1 (-16% grind down), 4/6 strategies correctly stayed out (0% loss vs -16% benchmark). SMA200 entry filters and EMA death-cross exits proved effective.
 
-3. **CBBI is the best single indicator.** Pure CBBI timing (buy when fearful <0.4, sell when greedy >0.7) achieved +251% in bulls with zero bear losses. It aggregates multiple on-chain metrics into one signal.
+3. **CBBI is the best single indicator.** Pure CBBI timing (buy when fearful <0.4, sell when greedy >0.75) achieved +289% in bulls with zero bear losses. It aggregates multiple on-chain metrics into one signal.
 
 4. **Simplicity wins.** Strategies with 2-3 indicators outperform those with 5+. Every additional condition is an opportunity to miss a good trade.
 
@@ -62,9 +62,9 @@ Auto-Quant/
 │   ├── strategies/
 │   │   ├── _template.py.example
 │   │   ├── MtfTrendSmartHold.py        # +427% bull, 0% bear
-│   │   ├── MtfTrendCbbiLead.py         # CBBI-first +251%
-│   │   ├── MtfTrendEmaValuation.py     # 4-indicator combo
-│   │   ├── MtfTrendCycle01.py          # AHR999+CBBI cycle
+│   │   ├── MtfTrendCbbiLead.py         # CBBI-first +289%
+│   │   ├── MtfTrendEmaValuation.py     # 4-indicator combo +174%
+│   │   ├── MtfTrendCycle01.py          # AHR999+CBBI+SMA200 +88%
 │   │   ├── MtfTrendBear01.py           # SMA200 bear guard
 │   │   ├── BuyAndHold.py               # benchmark
 │   │   └── .archive/                   # 38 archived experiments
@@ -123,7 +123,7 @@ uv run val.py
 | v0.1.0 | 99 | 1.44 (true 0.19) | Single-file mutation, oracle-gaming discovered |
 | v0.2.0 | 81 | 0.67 | Multi-strategy (3 slots), zero Goodhart |
 | v0.3.0 | 39 | 1.07 | MTF + 5-pair portfolio, per-pair metrics |
-| v0.4.0 | 96 | 0.16 (Sharpe) | 6 alt data + CBBI/AHR999 + 2026 OOS validated |
+| v0.4.0 | 98 | 0.16 (Sharpe) | CBBI/AHR999 indicators + 2026 Q1 OOS: 5/6 strategies beat benchmark |
 
 See `versions/` for full retrospectives.
 
