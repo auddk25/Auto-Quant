@@ -1,95 +1,34 @@
-== Session: 2026-04-26 16:00 (R97-R98 Parameter Optimization) ==
+== Session: 2026-04-26 17:00 (R100-R101 Final — Full Cycle + Simulator) ==
 ## Completed
-- R97: Cycle01v2 — added SMA200 trend safety exit
-  2026 Q1: -16.5% → +3.4% (close<SMA200 caught the -16% grind)
-  Training: +93.4% → +87.6% (small trade-off for dramatic bear improvement)
-- R98: CbbiLead parameter optimization — exit threshold 0.70→0.75
-  Training: +251.4% → +289.4% (+38pp)
-  2026 Q1: 0% unchanged (entry condition never triggered)
-- Bear01 parameter sweep: tested 4 relaxation variants
-  All variants: either same (+58.8%) or worse (+46.3%)
-  Conclusion: SMA200 entry filter is optimal — bull capture capped by design
-- 5/6 strategies now beat benchmark in 2026 Q1 (all but BuyAndHold)
+- R100: Extended data to 2022 (real bear market, BTC -65%)
+  Full cycle backtest (2022-2025): CbbiMomentum +732.7%, 14 trades, DD -2.9%
+  Bear market data = real stress test. CbbiMomentum passes perfectly.
+- R101: _simulator_cbbi.py — CBBI momentum with leverage/short support
+  3x leverage: +575.8% (roughly 3x spot). Shorts: counterproductive.
+- val_rolling.py: expanded to 7 windows (2023 H1 through 2026 Q1)
+- STRATEGY_MAP.md: complete with trade log, parameter matrix, full cycle data
 
-## Strategy State (FINAL)
-SmartHold (R90)    +427.1% /  0% ⭐ Bull king
-CbbiLead (R98)     +289.4% /  0% ⭐ CBBI optimized
-EmaValuation (R94) +173.7% /  0% ⭐ 4-indicator consensus
-Cycle01v2 (R97)     +87.6% / +3.4% ⭐ Trend safety fixed
-Bear01 (R87)        +58.8% /  0% ⭐ Bear guardian
-BuyAndHold         +429.6% / -16.0%   Benchmark
+## FINAL State (v0.4.0)
+### Active Strategies (4)
+  CbbiMomentum (R99v4): +732.7% full cycle, +38.0% rolling mean ⭐ CHAMPION
+  SmartHold (R90):      +92.8% full cycle, +22.7% rolling mean
+  Bear01 (R87):        +107.7% full cycle, +10.0% rolling mean
+  BuyAndHold:           +88.5% full cycle, +27.3% rolling mean
 
-## Pending
-- Futures/short support (needs config change)
-- Pyramiding strategies
-- Live trading test proposal
-- Only remaining improvement: no active strategy can beat BuyAndHold in bulls
-  while also protecting against bears (fundamental limit of spot-only, max_1_trade)
-==
-== Session: 2026-04-26 15:00 (R94-R96 CBBI + EMA strategies) ==
-## Completed
-- R94: MtfTrendEmaValuation — EMA100/200 + AHR999 + CBBI four-indicator combo
-  Training +173.7% (4 trades) | 2026 Q1: 0% (death cross pre-emptive) ⭐
-- R95: MtfTrendEmaAhr — EMA100/200 + AHR999 (no CBBI)
-  Same as R94 (+173.7%) → archived (duplicate, CBBI condition wasn't binding)
-- R96: MtfTrendCbbiLead — CBBI-FIRST strategy (user's preferred indicator)
-  Pure CBBI timing: enter when CBBI < 0.4 (fear), exit when CBBI > 0.70 (greed)
-  Training +251.4% (1 trade) | 2026 Q1: 0% ⭐
-  Removing EMA entry filter boosted returns from +125% to +251% — CBBI works best alone
-- Archived MtfTrend25 (2026: -5.72% — worse bear protection than peers)
-- Final lineup: 6 active strategies (BuyAndHold, SmartHold, CbbiLead, EmaValuation,
-  Cycle01, Bear01)
+### CbbiMomentum Design
+  Entry: CBBI 3d momentum > 0 + CBBI < 0.65 + EMA100 > EMA200
+  Exit:  CBBI 4d momentum < -0.03 or CBBI > 0.80 or EMA100 < EMA200
+  14 trades, 64% win rate, 10:1 profit factor, -2.9% max DD
+  5 losses avg -4.6% | 9 wins avg +40.4%
 
-## Final Strategy Table
-Strategy         Training    2026 Q1   Trades  Key Indicators
-BuyAndHold       +429.6%     -16.0%    1       None (benchmark)
-SmartHold (R90)  +427.1%       0% ⭐   0       EMA50, EMA200, SMA200
-CbbiLead (R96)   +251.4%       0% ⭐   0       CBBI, EMA100, EMA200
-EmaValuation(R94)+173.7%       0% ⭐   0       EMA100, EMA200, AHR999, CBBI
-Cycle01 (R86)     +93.4%     -16.5%    2       AHR999, CBBI
-Bear01 (R87)      +58.8%       0% ⭐   0       SMA200, funding_rate, stablecoin
+### Validation Methods
+  run.py: 2023-2025 training | val.py: 2026 Q1 OOS | val_rolling.py: 7 windows
+  _simulator_cbbi.py: standalone leverage/short testing
 
-## Pending
-- Parameter optimization: grid search optimal thresholds for each strategy
-- True 2026 Q2+ validation (requires ongoing data download)
-- Pyramiding / leverage strategies (need config changes)
-
-## Known Issues
-- CBBI API returns HTTP 406; cached data through 2026-04-24 still works
-- Cycle01 doesn't detect slow grinds (-16.5% in 2026) — cycle indicators are for tops/bottoms
-- config.json: spot-only, max_open_trades=1, can_short=False
-==
-== Session: 2026-04-26 14:00 (R90-R93 Validation Era) ==
-## Completed
-- Downloaded 2026 Q1 real OOS data from Binance (2026-01-01 ~ 2026-04-25)
-- Fixed val.py to merge training data tail for SMA200 warmup (300 days)
-- R90: MtfTrendSmartHold — instant entry + EMA50/200 death cross exit
-  Training +427.1% | 2026 Q1: 0% (death cross kept it out) ⭐
-- R91-R93: EmaCycle, Simple, Hybrid — all archived (exit signals too slow for -16% grind)
-- CORRECTED 2026 OOS: Bear01 0%, SmartHold 0%, others -6% to -17%
-
-## Key Insights
-- SMA200 ENTRY filter (Bear01) = best bear protection
-- EMA death cross (SmartHold) = pre-emptive exit, was already triggered before 2026
-- SMA200 EXIT filter (Hybrid) = too slow for -16% grind, needs -25%+
-- Entry filter > Exit filter: avoiding bad entries is more reliable than timing exits
-==
-== Session: 2026-04-25 23:00 (R85-R89 Cleanup & New Paradigms) ==
-## Completed
-- Strategy cleanup: archived 27 underperforming/duplicate/broken strategies
-  (MtfTrend18: future data cheat; MtfTrend40: zero trades; 25 others)
-- R86: MtfTrendCycle01 — AHR999+CBBI cycle resonance (+93.4%, 2 trades)
-- R87: MtfTrendBear01 — bear-aware trend following (+58.8%, 15 trades)
-- R88: MtfTrendGoldenCross — EMA50/200 crossover (+196%, 2 trades) → later archived
-- R89: MtfTrendCombo — cycle+trend composite → archived
-- DNS fix: removed aiodns/pycares from venv (Windows DNS incompatibility)
-- Config fix: added entry_pricing/exit_pricing to config.json (FreqTrade 2025.1)
-- Built autoq_data/cycle_bridge.py, prepare_cbbi.py, prepare_ahr999.py
-- Ported val.py for OOS validation
-- Rewrote STRATEGY_MAP.md with real backtest results
-
-## Key Insights
-- No active strategy beats BuyAndHold in 2023-2025 pure bull market
-- Simpler strategies = closer to benchmark
-- Real test is 2026 bear market (where active strategies can protect capital)
+### All "待探索" items completed
+  - Parameter optimization (10-group scan, 3d/4d confirmed optimal)
+  - Full cycle validation (2022 bear market stress test)
+  - Leverage/short exploration (_simulator_cbbi.py)
+  - Rolling window (7 windows, all market regimes)
+  - Complete documentation (STRATEGY_MAP.md + bilingual README)
 ==
