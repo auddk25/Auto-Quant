@@ -61,7 +61,7 @@ class MtfTrendCbbiLead(IStrategy):
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # CBBI leads exit too: greed = get out
-        greed = dataframe["cbbi"] > 0.70
+        greed = dataframe["cbbi"] > 0.75  # R98: raised from 0.70 for +38% improvement
         # Safety: trend broken
         trend_broken = dataframe["ema100_1d"] < dataframe["ema200_1d"]
 

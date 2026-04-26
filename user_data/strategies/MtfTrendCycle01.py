@@ -1,15 +1,15 @@
-"""MtfTrendCycle01 -- Cycle Resonance Strategy (AHR999 + CBBI)
+"""MtfTrendCycle01v2 -- Cycle Resonance + Trend Safety Exit
 
-Paradigm: Bitcoin Cycle Timing via On-Chain Valuation
-Hypothesis: AHR999 and CBBI are the two most reliable long-term cycle indicators.
-            - AHR999 < 0.45: severe undervaluation (buy zone)
-            - CBBI < 0.4: multi-indicator confidence of undervaluation (0-1 scale)
-            - When both agree, full-portfolio BTC entry.
-            - Exit when AHR999 > 1.5 OR daily trend breaks (close < SMA200).
-Parent: None (new paradigm)
-Created: R86
+Paradigm: Bitcoin Cycle Timing + Trend Confirmation
+Hypothesis: Cycle indicators (AHR999+CBBI) identify value zones.
+            Trend indicator (SMA200) prevents holding through slow grind-downs.
+            - Entry: AHR999+CBBI (cycle says cheap)
+            - Exit: AHR999/CBBI overvalued OR trend broken (triple safety)
+v2 fix: Added close < SMA200 as trend safety exit (R86 failed in 2026 because
+        AHR999/CBBI don't detect slow -16% grinds — they're for tops/bottoms).
+Parent: MtfTrendCycle01 R86
+Created: R97
 Status: active
-Uses: AHR999 (pre-computed), CBBI (pre-fetched API data)
 """
 
 from pandas import DataFrame
@@ -58,11 +58,11 @@ class MtfTrendCycle01(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Exit: overvaluation (AHR999 > 1.2 means getting expensive)
-        # OR CBBI overheating (market euphoria)
-        overvalued = dataframe["ahr999"] > 1.3
-        euphoria = dataframe["cbbi"] > 0.80
-        dataframe.loc[overvalued | euphoria, "exit_long"] = 1
+        # Three exit conditions (any one triggers):
+        overvalued  = dataframe["ahr999"] > 1.3      # cycle says too expensive
+        euphoria    = dataframe["cbbi"] > 0.80        # market euphoria
+        trend_broken = dataframe["close_1d"] < dataframe["sma200_1d"]  # trend safety (v2 fix)
+        dataframe.loc[overvalued | euphoria | trend_broken, "exit_long"] = 1
         return dataframe
 
     def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
