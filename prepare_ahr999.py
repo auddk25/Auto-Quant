@@ -5,7 +5,7 @@ import numpy as np
 GENESIS = pd.Timestamp("2009-01-03", tz="UTC")
 
 # Load BTC daily
-df = pd.read_feather("user_data/data/binance/BTC_USDT-1d.feather")
+df = pd.read_feather("user_data/data/BTC_USDT-1d.feather")
 df["date"] = pd.to_datetime(df["date"])
 if df["date"].dt.tz is None:
     df["date"] = df["date"].dt.tz_localize("UTC")
