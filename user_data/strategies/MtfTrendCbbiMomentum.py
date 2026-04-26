@@ -52,7 +52,7 @@ class MtfTrendCbbiMomentum(IStrategy):
         # On 1h data, CBBI is daily — need to track daily changes
         # Use shift(24) for approximate daily change on 1h candles
         dataframe["cbbi_3d_ago"] = dataframe["cbbi"].shift(24 * 3)  # 3d for entry
-        dataframe["cbbi_5d_ago"] = dataframe["cbbi"].shift(24 * 5)  # 5d for exit
+        dataframe["cbbi_5d_ago"] = dataframe["cbbi"].shift(24 * 4)  # 4d for exit
         dataframe["cbbi_momentum_3d"] = dataframe["cbbi"] - dataframe["cbbi_3d_ago"]  # faster entry
         dataframe["cbbi_momentum"] = dataframe["cbbi"] - dataframe["cbbi_5d_ago"]  # slower exit
         return dataframe
