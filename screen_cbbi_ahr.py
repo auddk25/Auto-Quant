@@ -11,6 +11,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from typing import Any
+
+# Fix Windows aiodns DNS resolution failure — use thread-based resolver
+import aiohttp.connector, aiohttp.resolver
+aiohttp.connector.DefaultResolver = aiohttp.resolver.ThreadedResolver
+
 from freqtrade.configuration import Configuration
 from freqtrade.enums import RunMode
 from freqtrade.optimize.backtesting import Backtesting
@@ -18,7 +23,7 @@ from freqtrade.optimize.backtesting import Backtesting
 PROJECT = Path(__file__).parent
 USER_DATA = PROJECT / "user_data"
 STRATEGIES = USER_DATA / "strategies"
-CONFIG = PROJECT / "config.json"
+CONFIG = PROJECT / "config_daily.json"
 DATA = USER_DATA / "data"
 TIMERANGE = "20230101-20251231"
 
@@ -62,13 +67,39 @@ for entry_mode, entry_list in ENTRY_PARAMS.items():
                     **ep, **xp,
                 })
 
+# Fine: expand top-3 from coarse screening
+# Top-1: momentum + high_estimate, N=3, EXIT_AHR=1.2, EXIT_CB=0.8 → 356.5%
+# Top-2: momentum + momentum_rev, N=3, EXIT_MOM_N=5, EXIT_MOM_THRESHOLD=0.05 → 341.9%
+# Top-3: momentum + high_estimate, N=7, EXIT_AHR=1.2, EXIT_CB=0.8 → 317.7%
+FINE_COMBOS = []
+# Top-1 variants: momentum + high_estimate around N=3
+for n in [2, 3, 4]:
+    for exit_cb in [0.75, 0.80, 0.85]:
+        for exit_ahr in [1.0, 1.1, 1.2, 1.3]:
+            FINE_COMBOS.append({
+                "ENTRY_MODE": "momentum", "EXIT_MODE": "high_estimate",
+                "MOMENTUM_N": n, "EXIT_CB": exit_cb, "EXIT_AHR": exit_ahr,
+            })
+# Top-2 variants: momentum + momentum_rev around N=3
+for n in [2, 3, 4]:
+    for exit_n in [3, 4, 5, 6]:
+        for threshold in [0.03, 0.04, 0.05, 0.06]:
+            FINE_COMBOS.append({
+                "ENTRY_MODE": "momentum", "EXIT_MODE": "momentum_rev",
+                "MOMENTUM_N": n, "EXIT_MOM_N": exit_n, "EXIT_MOM_THRESHOLD": threshold,
+            })
+# Top-3 variants: momentum + high_estimate around N=7
+for n in [6, 7, 8]:
+    for exit_cb in [0.75, 0.80, 0.85]:
+        for exit_ahr in [1.0, 1.1, 1.2, 1.3]:
+            FINE_COMBOS.append({
+                "ENTRY_MODE": "momentum", "EXIT_MODE": "high_estimate",
+                "MOMENTUM_N": n, "EXIT_CB": exit_cb, "EXIT_AHR": exit_ahr,
+            })
+
 
 def run_backtest(params: dict) -> dict[str, Any]:
-    """Run backtest with given params applied to strategy class."""
-    from user_data.strategies.CbbiAhr999Daily import CbbiAhr999Daily
-    for k, v in params.items():
-        setattr(CbbiAhr999Daily, k, v)
-
+    """Run backtest with given params applied to strategy instance."""
     args = {
         "config": [str(CONFIG)], "user_data_dir": str(USER_DATA),
         "datadir": str(DATA), "strategy": "CbbiAhr999Daily",
@@ -77,6 +108,11 @@ def run_backtest(params: dict) -> dict[str, Any]:
     }
     config = Configuration(args, RunMode.BACKTEST).get_config()
     bt = Backtesting(config)
+    # FreqTrade reloads the strategy module from file each time, so
+    # setattr on the class has no effect. Set on the loaded instance instead.
+    strat = bt.strategylist[0]
+    for k, v in params.items():
+        setattr(strat, k, v)
     bt.start()
     return bt.results
 
@@ -110,7 +146,7 @@ def format_params(params: dict) -> str:
 
 def main():
     fine_mode = "--fine" in sys.argv
-    combos = COARSE_COMBOS  # fine mode combos added in Task 4
+    combos = FINE_COMBOS if fine_mode else COARSE_COMBOS
 
     print(f"=== CBBI+ADR999 Screening ({'Fine' if fine_mode else 'Coarse'}) ===")
     print(f"Combos: {len(combos)}")

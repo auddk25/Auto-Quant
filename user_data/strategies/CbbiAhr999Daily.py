@@ -82,7 +82,10 @@ class CbbiAhr999Daily(IStrategy):
         else:
             cond = vol_ok & False  # no entry
 
-        dataframe.loc[cond.fillna(False), "enter_long"] = 1
+        # Edge detection: only enter when condition transitions False → True
+        cond = cond.fillna(False)
+        edge = cond & ~cond.shift(1).fillna(False)
+        dataframe.loc[edge, "enter_long"] = 1
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
