@@ -1,0 +1,32 @@
+{
+  "max_open_trades": 1,
+  "stake_currency": "USDT",
+  "stake_amount": "unlimited",
+  "tradable_balance_ratio": 0.99,
+  "fiat_display_currency": "USD",
+  "timeframe": "1d",
+  "dry_run": true,
+  "dry_run_wallet": 10000,
+  "exchange": {
+    "name": "binance",
+    "key": "",
+    "secret": "",
+    "pair_whitelist": ["BTC/USDT", "ETH/USDT"],
+    "pair_blacklist": []
+  },
+  "pairlists": [{"method": "StaticPairList"}],
+  "entry_pricing": {
+    "price_side": "same",
+    "use_order_book": false,
+    "price_last_balance": 0.0
+  },
+  "exit_pricing": {
+    "price_side": "same",
+    "use_order_book": false,
+    "price_last_balance": 0.0
+  },
+  "fee": 0.001,
+  "dataformat_ohlcv": "feather",
+  "dataformat_trades": "feather",
+  "timerange": "20230101-20251231"
+}

@@ -1,0 +1,109 @@
+{
+  "strategy": "Ensemble CBBI",
+  "timerange": "20230101-20251231",
+  "full_backtest": {
+    "profit_pct": 1118.25,
+    "max_dd_pct": -5.317479877164724,
+    "trades": 28,
+    "win_rate": 57.14285714285714,
+    "profit_factor": 12.606455666610879
+  },
+  "monte_carlo": {
+    "n_sims": 1000,
+    "n_windows": 12,
+    "mean": 474.363997825536,
+    "std": 8.390905034323825e-14,
+    "p5": 474.3639978255358,
+    "p25": 474.36399782553593,
+    "median": 474.36399782553605,
+    "p75": 474.36399782553605,
+    "p95": 474.3639978255361,
+    "pct_positive": 100.0,
+    "dd_mean": 4.500000000000004,
+    "dd_p95": 4.500000000000011
+  },
+  "cross_validation": [
+    {
+      "fold": "Fold 1 (train 22-23, val 24)",
+      "val_range": "20240101-20241231",
+      "profit_pct": 348.94,
+      "max_dd_pct": -2.190913269173184,
+      "trades": 12,
+      "win_rate": 75.0,
+      "profit_factor": 41.37422923039825
+    },
+    {
+      "fold": "Fold 2 (train 22-24, val 25)",
+      "val_range": "20250101-20251231",
+      "profit_pct": 35.92,
+      "max_dd_pct": -5.317398181801108,
+      "trades": 5,
+      "win_rate": 60.0,
+      "profit_factor": 7.331711980241967
+    },
+    {
+      "fold": "Fold 3 (train 23-24, val 25-26)",
+      "val_range": "20250101-20260101",
+      "profit_pct": 35.92,
+      "max_dd_pct": -5.317398181801108,
+      "trades": 5,
+      "win_rate": 60.0,
+      "profit_factor": 7.331711980241967
+    }
+  ],
+  "market_state": {
+    "bear": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n_windows": 1
+    },
+    "recovery": {
+      "mean": 24.28,
+      "min": 24.28,
+      "max": 24.28,
+      "n_windows": 1
+    },
+    "consolidation": {
+      "mean": 0.2866666666666668,
+      "min": -4.52,
+      "max": 2.96,
+      "n_windows": 3
+    },
+    "bull": {
+      "mean": 30.939999999999998,
+      "min": 3.28,
+      "max": 73.76,
+      "n_windows": 6
+    }
+  },
+  "checks": [
+    {
+      "name": "Monte Carlo 5% > 0%",
+      "passed": "True",
+      "value": "474.4%"
+    },
+    {
+      "name": "MC positive > 90%",
+      "passed": true,
+      "value": "100.0%"
+    },
+    {
+      "name": "CV fold ratio < 3x",
+      "passed": false,
+      "value": "9.7x"
+    },
+    {
+      "name": "Bear mean > -20%",
+      "passed": "True",
+      "value": "0.0%"
+    },
+    {
+      "name": "No consecutive CV losses",
+      "passed": true,
+      "value": ""
+    }
+  ],
+  "passed": 4,
+  "total": 5
+}
